@@ -1,0 +1,132 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "e62738ad-7583-4a38-97d9-d6d363c2f65b",
+  "prevId": "b1a9f8dc-8363-4c71-b837-685033a9d33b",
+  "tables": {
+    "contribution_days": {
+      "name": "contribution_days",
+      "columns": {
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "contribution_days_date_iso": {
+          "name": "contribution_days_date_iso",
+          "value": "\"contribution_days\".\"date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+        },
+        "contribution_days_count_non_negative": {
+          "name": "contribution_days_count_non_negative",
+          "value": "\"contribution_days\".\"count\" >= 0"
+        }
+      }
+    },
+    "counters": {
+      "name": "counters",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "counters_name_known": {
+          "name": "counters_name_known",
+          "value": "\"counters\".\"name\" IN ('views', 'pets')"
+        },
+        "counters_count_non_negative": {
+          "name": "counters_count_non_negative",
+          "value": "\"counters\".\"count\" >= 0"
+        }
+      }
+    },
+    "sections": {
+      "name": "sections",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "sections_name_known": {
+          "name": "sections_name_known",
+          "value": "\"sections\".\"name\" IN ('profile', 'projects', 'skills', 'now', 'snapshots', 'banner')"
+        },
+        "sections_data_json": {
+          "name": "sections_data_json",
+          "value": "json_valid(\"sections\".\"data\")"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

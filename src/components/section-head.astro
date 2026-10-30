@@ -1,0 +1,15 @@
+---
+import Band from "./band.astro";
+
+interface Props {
+  id: string;
+  title: string;
+  i: number;
+}
+
+const { id, title, i } = Astro.props;
+---
+
+<Band i={i} class="p-3 max-sm:p-4" aria-labelledby={id}>
+  <h2 id={id} class="scroll-mt-6 text-lg leading-[23px] font-bold text-ink">{title}</h2>
+</Band>

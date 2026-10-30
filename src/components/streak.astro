@@ -1,0 +1,341 @@
+---
+interface Props {
+  /** The Duolingo streak, in days. */
+  streak: number;
+}
+
+const { streak } = Astro.props;
+---
+
+<!--
+  The streak over the Duolingo mark (data-streak in the intro). On hover, embers rise from the mark,
+  gather into the flame, the flame catches and the count rolls up. The mark's aria-label already says
+  the streak, so this is hidden from screen readers.
+-->
+<span data-streak-badge data-value={streak} class="streak absolute top-0 left-0 z-20" aria-hidden="true" hidden>
+  <!-- Lucide "flame", with the viewBox trimmed to its ink (stroke included) so it aligns by what is seen. -->
+  <svg
+    class="streak-flame"
+    width="12.19"
+    height="16"
+    viewBox="4 2 16 21"
+    fill="#ff9600"
+    stroke="#ff9600"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"></path>
+  </svg>
+  <b data-stat="streak">{streak.toLocaleString("en-US")}</b>
+</span>
+
+<script>
+  // Plain script, not an island: one canvas over the mark, drawn only while embers are alive.
+  /** The flame's viewBox, in icon units. */
+  const VIEW = { x: 4, y: 2, w: 16, h: 21 };
+  /** From the ink of the flame and count to the top of the mark at rest (the hop lifts the mark ~3px). */
+  const GAP = 12;
+  /** The canvas: a square on the mark, big enough for the rise. */
+  const SIZE = 160;
+  /** Embers that build the flame. */
+  const GATHER = 16;
+  /** Seconds after enter: the latest the flame catches, even with embers still on the way. */
+  const LIGHT_AT = 0.62;
+  const CLOSE_DELAY = 120;
+  /** The fade out in the CSS. */
+  const EXIT = 160;
+
+  type Seat = { x: number; y: number };
+  type Ember = {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    age: number;
+    life: number;
+    r: number;
+    sway: number;
+    seed: number;
+    /** A burst ember: strong drag, no pull. */
+    pop: boolean;
+    /** Its place in the flame, or "heart" for an ember that feeds the lit flame. */
+    seat: Seat | "heart" | null;
+    held: boolean;
+    fade: number;
+  };
+  type Session = {
+    alive: boolean;
+    t: number;
+    lit: boolean;
+    arrived: number;
+    feedIn: number;
+    queue: { at: number; seat: Seat }[];
+    /** The mark's centre and the flame's box, in canvas space. */
+    ox: number;
+    oy: number;
+    flame: { x: number; y: number; w: number; h: number };
+  };
+
+  const trigger = document.querySelector<HTMLElement>("[data-streak]");
+  const badge = document.querySelector<HTMLElement>("[data-streak-badge]");
+  if (trigger && badge) mount(trigger, badge);
+
+  function mount(trigger: HTMLElement, badge: HTMLElement) {
+    const flameEl = badge.querySelector<SVGSVGElement>(".streak-flame")!;
+    const countEl = badge.querySelector<HTMLElement>("[data-stat]")!;
+    const streak = Number(badge.dataset.value);
+    const label = streak.toLocaleString("en-US");
+    // Room for the final number, so the group keeps its place while it counts.
+    countEl.style.minWidth = `${label.length}ch`;
+
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const light = () => document.documentElement.dataset.theme === "light";
+    // Duolingo's yellow and orange. On the light ground they run darker, so they still read.
+    const hot = () => (light() ? "#ffb400" : "#fff3c4");
+    const MID = "#ffc800";
+    const warm = () => (light() ? "#f07800" : "#ff9600");
+    const heat = (k: number) => (k < 0.2 ? hot() : k < 0.55 ? MID : warm());
+
+    let canvas: HTMLCanvasElement | null = null;
+    let ctx: CanvasRenderingContext2D | null = null;
+    let seats: Seat[] = [];
+    let embers: Ember[] = [];
+    let running = false;
+    let last = 0;
+    let session: Session | null = null;
+    let closeTimer = 0;
+    let hideTimer = 0;
+
+    /** The canvas and the seats are made on the first hover, never with reduced motion. */
+    function stage() {
+      if (canvas) return;
+      canvas = document.createElement("canvas");
+      canvas.className = "streak-sparks";
+      canvas.setAttribute("aria-hidden", "true");
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = canvas.height = SIZE * dpr;
+      canvas.style.width = canvas.style.height = `${SIZE}px`;
+      badge.insertAdjacentElement("afterend", canvas);
+      ctx = canvas.getContext("2d")!;
+      ctx.scale(dpr, dpr);
+
+      // Points inside the flame, in icon units, spread so no two crowd. The probe has no dpr scale.
+      const probe = document.createElement("canvas").getContext("2d")!;
+      const path = new Path2D(flameEl.querySelector("path")!.getAttribute("d")!);
+      probe.lineWidth = 2;
+      for (let i = 0; i < 4000 && seats.length < GATHER; i++) {
+        const x = rand(VIEW.x + 1, VIEW.x + VIEW.w - 1);
+        const y = rand(VIEW.y + 1, VIEW.y + VIEW.h - 2);
+        if (!probe.isPointInPath(path, x, y) && !probe.isPointInStroke(path, x, y)) continue;
+        if (seats.some((s) => Math.hypot(s.x - x, s.y - y) < 2.9)) continue;
+        seats.push({ x, y });
+      }
+    }
+
+    /** Centre the flame and the count over the mark, and the canvas on the mark. Returns canvas-space anchors. */
+    function place() {
+      const column = badge.offsetParent as HTMLElement;
+      const box = column.getBoundingClientRect();
+      const r = trigger.getBoundingClientRect();
+      const cx = r.left + r.width / 2 - box.left;
+      const cy = r.top + r.height / 2 - box.top;
+      const w = badge.offsetWidth;
+      const h = badge.offsetHeight;
+      const left = Math.round(cx - w / 2);
+      const top = Math.round(r.top - box.top - GAP - h);
+      badge.style.translate = `${left}px ${top}px`;
+      if (canvas) canvas.style.translate = `${Math.round(cx - SIZE / 2)}px ${Math.round(cy - SIZE / 2)}px`;
+      // The flame is the first item, centred top to bottom in the group (an SVG has no offsetLeft).
+      const fw = flameEl.width.baseVal.value;
+      const fh = flameEl.height.baseVal.value;
+      const ox = cx - Math.round(cx - SIZE / 2);
+      const oy = cy - Math.round(cy - SIZE / 2);
+      return { ox, oy, flame: { x: left - (cx - ox), y: top + (h - fh) / 2 - (cy - oy), w: fw, h: fh } };
+    }
+
+    const seatAt = (s: Session, seat: Seat) => ({
+      x: s.flame.x + ((seat.x - VIEW.x) * s.flame.w) / VIEW.w,
+      y: s.flame.y + ((seat.y - VIEW.y) * s.flame.h) / VIEW.h,
+    });
+    // The bulb of the flame, where a feeding ember lands.
+    const heartOf = (s: Session) => ({ x: s.flame.x + s.flame.w / 2, y: s.flame.y + s.flame.h * 0.62 });
+
+    function ember(s: Session, pop: boolean, seat: Ember["seat"] = null) {
+      const a = -Math.PI / 2 + rand(-0.9, 0.9);
+      embers.push({
+        x: s.ox + rand(-5, 5),
+        y: s.oy - 8,
+        vx: pop ? Math.cos(a) * rand(30, 60) : rand(-5, 5),
+        vy: pop ? Math.sin(a) * rand(30, 60) : -rand(26, 40),
+        age: 0,
+        life: pop ? rand(0.4, 0.6) : rand(0.9, 1.3),
+        r: rand(1.2, 1.7),
+        sway: rand(6, 10),
+        seed: rand(0, 9),
+        pop,
+        seat,
+        held: false,
+        fade: 1,
+      });
+      wake();
+    }
+
+    /** Move and draw one ember. False when it is gone. */
+    function step(p: Ember, dt: number, s: Session | null, ctx: CanvasRenderingContext2D) {
+      p.age += dt;
+      const k = Math.min(1, p.age / p.life);
+      const pulled = p.seat !== null && s !== null && p.age > 0.12;
+      if (pulled) {
+        // A critically damped spring to the seat. Its stiffness ramps in, so the rise turns into a glide.
+        const t = p.seat === "heart" ? heartOf(s) : seatAt(s, p.seat as Seat);
+        const w = 22 * Math.min(1, (p.age - 0.12) / 0.22);
+        p.vx += (w * w * (t.x - p.x) - 2 * w * p.vx) * dt;
+        p.vy += (w * w * (t.y - p.y) - 2 * w * p.vy) * dt;
+        if (!p.held && Math.hypot(t.x - p.x, t.y - p.y) < 1.2) {
+          p.held = true;
+          s.arrived++;
+          if (p.seat === "heart") {
+            breathe();
+            p.fade = 0;
+          }
+        }
+      } else {
+        const drag = Math.exp(-(p.pop ? 4 : 0.6) * dt);
+        p.vx = p.vx * drag + Math.sin(p.age * p.sway + p.seed) * 6 * dt;
+        p.vy = p.vy * drag - (p.pop ? 0 : 6 * dt);
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      // Once the flame catches, the embers in it dissolve into the drawn flame.
+      if (s?.lit && p.seat && p.seat !== "heart") p.fade -= dt / 0.16;
+      if (p.fade <= 0 || (!pulled && k >= 1)) return false;
+
+      const flicker = 0.7 + 0.3 * Math.sin(p.age * 38 + p.seed);
+      ctx.globalAlpha = Math.max(0, (pulled ? 1 : 1 - k) * flicker * p.fade);
+      ctx.fillStyle = p.held ? MID : heat(k * 0.9);
+      if (!light()) {
+        ctx.shadowColor = "#ff9600";
+        ctx.shadowBlur = 6;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (pulled ? 0.9 : 1 - k * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      return true;
+    }
+
+    function wake() {
+      if (running) return;
+      running = true;
+      last = performance.now();
+      requestAnimationFrame(tick);
+    }
+
+    function tick(now: number) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      const s = session;
+      if (s?.alive) direct(s, dt);
+      ctx!.clearRect(0, 0, SIZE, SIZE);
+      // Embers add light on the dark ground; on the light ground they would wash out, so they paint over.
+      ctx!.globalCompositeOperation = light() ? "source-over" : "lighter";
+      embers = embers.filter((p) => step(p, dt, s?.alive ? s : null, ctx!));
+      if (embers.length || s?.alive) requestAnimationFrame(tick);
+      else running = false;
+    }
+
+    /** One hover: the seats fill, the flame catches, then an ember feeds it now and then. */
+    function direct(s: Session, dt: number) {
+      s.t += dt;
+      while (s.queue.length && s.t >= s.queue[0].at) ember(s, false, s.queue.shift()!.seat);
+      if (!s.lit && (s.arrived >= GATHER - 2 || s.t >= LIGHT_AT)) ignite(s);
+      if (s.lit && (s.feedIn -= dt) <= 0) {
+        ember(s, false, "heart");
+        s.feedIn = rand(0.5, 0.8);
+      }
+    }
+
+    function ignite(s: Session) {
+      s.lit = true;
+      badge.dataset.lit = "";
+      flameEl.animate([{ filter: "brightness(1.8)" }, { filter: "brightness(1)" }], { duration: 380, easing: "ease-out" });
+      const t0 = performance.now();
+      const count = (now: number) => {
+        if (session !== s) return;
+        const k = Math.min(1, (now - t0) / 620);
+        countEl.textContent = Math.round(streak * (1 - (1 - k) ** 3)).toLocaleString("en-US");
+        if (k < 1) requestAnimationFrame(count);
+      };
+      requestAnimationFrame(count);
+    }
+
+    /** A feeding ember lands: the flame breathes once. */
+    function breathe() {
+      flameEl.animate([{ scale: 1 }, { scale: 1.14 }, { scale: 1 }], {
+        duration: 300,
+        easing: "cubic-bezier(0.34, 1.4, 0.64, 1)",
+      });
+    }
+
+    function open() {
+      clearTimeout(closeTimer);
+      clearTimeout(hideTimer);
+      if (session) return;
+      badge.hidden = false;
+      if (reduce.matches) {
+        countEl.textContent = label;
+        place();
+        badge.dataset.open = "";
+        badge.dataset.lit = "";
+        session = { alive: false } as Session;
+        return;
+      }
+      stage();
+      countEl.textContent = "0";
+      const s: Session = { ...place(), alive: true, t: 0, lit: false, arrived: 0, feedIn: 0.6, queue: [] };
+      // Shuffled, so the flame fills from everywhere at once, not row by row.
+      [...seats]
+        .sort(() => Math.random() - 0.5)
+        .forEach((seat, i) => s.queue.push({ at: 0.05 + i * 0.022, seat }));
+      session = s;
+      requestAnimationFrame(() => (badge.dataset.open = ""));
+      for (let i = 0; i < 3; i++) ember(s, true);
+    }
+
+    function close(now = false) {
+      clearTimeout(closeTimer);
+      if (!session) return;
+      session.alive = false;
+      session = null;
+      delete badge.dataset.open;
+      delete badge.dataset.lit;
+      // Embers on their way, or sitting in the flame, let go and burn out instead of vanishing.
+      for (const p of embers) if (p.seat) Object.assign(p, { seat: null, pop: true, age: 0, life: 0.35, fade: 1 });
+      countEl.textContent = label;
+      if (now) badge.hidden = true;
+      else hideTimer = window.setTimeout(() => (badge.hidden = true), EXIT);
+    }
+
+    const later = () => {
+      clearTimeout(closeTimer);
+      closeTimer = window.setTimeout(() => close(), CLOSE_DELAY);
+    };
+
+    // Mouse only: on touch the link works as before.
+    trigger.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "mouse") open();
+    });
+    trigger.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") later();
+    });
+    trigger.addEventListener("focus", () => {
+      if (trigger.matches(":focus-visible")) open();
+    });
+    trigger.addEventListener("blur", () => close());
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close(true);
+    });
+  }
+</script>

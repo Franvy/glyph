@@ -1,0 +1,24 @@
+---
+import { env } from "cloudflare:workers";
+import { AdminEditor } from "@/components/admin-editor";
+import Band from "@/components/band.astro";
+import Base from "@/layouts/base.astro";
+import { getContent } from "@/lib/content";
+
+// On demand: reads D1. src/middleware.ts lets the request in only with a valid Cloudflare Access token.
+export const prerender = false;
+
+const content = await getContent(env.DB);
+---
+
+<Base title="Admin · glyph" description="Edit the content of the home page." countView={false} noindex>
+  <header>
+    <Band i={0} class="flex items-center justify-between p-3">
+      <h1 class="text-lg leading-[23px] font-bold text-ink">~/admin</h1>
+      <a href="/" class="link text-sm text-dim">← Home</a>
+    </Band>
+  </header>
+  <main>
+    <AdminEditor client:load initial={content} />
+  </main>
+</Base>

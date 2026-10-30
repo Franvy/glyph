@@ -1,0 +1,12 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+type Props = Omit<HTMLAttributes<"section">, "class" | "style"> & { class?: string; i: number };
+
+const { class: className = "", i, ...rest } = Astro.props;
+---
+
+<!-- A full-bleed band with a dashed rule under it and the railed 690px column inside. -->
+<section class="band enter" style={`--i: ${i}`} {...rest}>
+  <div class={`rail ${className}`}><slot /></div>
+</section>

@@ -1,0 +1,122 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "451445da-7a5c-4803-a3f5-eae1e1a1f4a5",
+  "prevId": "3b15055f-f5a3-4fb7-8032-9eb0306d8081",
+  "tables": {
+    "counters": {
+      "name": "counters",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "counters_name_known": {
+          "name": "counters_name_known",
+          "value": "\"counters\".\"name\" IN ('views', 'pets')"
+        },
+        "counters_count_non_negative": {
+          "name": "counters_count_non_negative",
+          "value": "\"counters\".\"count\" >= 0"
+        }
+      }
+    },
+    "likes": {
+      "name": "likes",
+      "columns": {
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "likes_count_non_negative": {
+          "name": "likes_count_non_negative",
+          "value": "\"likes\".\"count\" >= 0"
+        }
+      }
+    },
+    "sections": {
+      "name": "sections",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "sections_name_known": {
+          "name": "sections_name_known",
+          "value": "\"sections\".\"name\" IN ('profile', 'projects', 'skills', 'now', 'snapshots', 'banner')"
+        },
+        "sections_data_json": {
+          "name": "sections_data_json",
+          "value": "json_valid(\"sections\".\"data\")"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

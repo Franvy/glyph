@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Limns">
+  <!-- The site mark as an APP ICON: the comet on a white chip with the corners
+       taken off. This file is the browser tab, and nothing else on the site
+       looks like it — components/Logo.tsx draws the same comet on a full
+       circle, which is the right silhouette beside a wordmark and the wrong
+       one in a tab strip, where every neighbour is a rounded square and a disc
+       reads as the odd one out. It is the design file's own 100×100 frame
+       verbatim: rx 24 is its rounded-3xl, and the comet sits at 11,21 at 77
+       wide — a wider mark in a tighter frame than Logo.tsx's, because this one
+       is read at 16px.
+
+       The ground is opaque white under both colour schemes on purpose. It is a
+       chip, not a glyph: a mark that inverted with the browser theme would be
+       a black comet on nothing, and the corners are the only thing carrying
+       the shape.
+
+       THE COMMENT IS INSIDE THE ROOT ELEMENT, and that is not a style choice.
+       libvips sniffs a file's format by looking for the signature in the first
+       a-thousand-or-so bytes, so a header comment this long above <svg> makes
+       the file unreadable to sharp — "Input file contains unsupported image
+       format", from the one tool that has to open it.
+
+       Source of truth for scripts/build-icons.ts, which rasterises this into
+       the .ico and the two PNGs other people's software probes for. Edit here,
+       then run "bun run icons". -->
+  <rect width="100" height="100" rx="24" fill="#fff" />
+  <path transform="translate(11 21)" d="M37.348 31.564C36.666 31.418 35.461 30.987 34.789 30.75 34.091 30.503 32.403 29.972 31.815 29.622 29.993 28.433 28.034 26.33 26.824 24.538 25.534 22.516 24.701 19.219 24.634 16.9 24.591 15.428 25.158 12.307 25.788 10.979 26.345 9.801 28.095 6.21 28.889 5.415 33.822 0.477 42.182-1.806 48.563 1.674 50.439 2.686 51.781 3.585 52.93 5.427 53.704 6.643 54.129 7.906 54.527 9.283 55.779 12.899 55.842 15.798 54.936 19.499 54.745 20.278 54.591 21.447 54.385 22.347 54.378 22.374 54.372 22.4 54.365 22.428 54.092 22.689 53.728 23.014 53.473 23.277 55.446 22.463 58.427 20.041 60.268 18.792 61.469 17.978 62.58 17.32 63.854 16.617 64.516 17.352 65.486 17.806 66.221 18.445 68.852 20.735 71.521 22.934 74.304 25.039 74.871 25.467 75.438 25.921 75.918 26.441 76.145 26.707 76.477 27.416 76.371 27.59 76.154 27.945 74.321 29.502 74.005 29.747 72.382 31.022 70.741 32.186 69.018 33.297 68.033 33.932 67.178 34.603 66.198 35.236 65.366 35.774 64.478 36.098 63.692 36.567 61.212 38.044 58.609 39.267 55.995 40.496 55.194 40.873 53.951 41.166 53.075 41.515 52.221 41.854 51.342 42.245 50.493 42.566 47.938 43.507 45.36 44.38 42.759 45.183 41.449 45.583 40.074 45.746 38.777 46.204 38.24 46.394 37.716 46.645 37.3 47.042 36.314 47.977 35.515 49.119 34.616 50.134 33.986 50.844 33.302 51.5 32.642 52.183 31.452 53.416 27.622 57.555 25.851 57.369 25.437 57.325 24.879 57.112 24.616 56.78 24.343 56.435 24.377 55.941 24.434 55.53 24.632 54.124 28.189 51.363 29.351 50.307 30.082 49.641 30.801 48.851 31.583 48.259 31.474 47.81 30.582 47.929 30.165 47.912 29.218 47.919 28.277 47.89 27.336 48.035 26.611 48.145 25.821 48.441 25.098 48.499 21.811 48.758 18.497 48.617 15.202 48.673 15.013 48.675 14.779 48.685 14.592 48.667 13.992 48.727 13.32 48.696 12.713 48.709 11.777 48.731 10.832 48.677 9.896 48.673 8.109 48.663 6.325 48.673 4.541 48.563 4.261 48.546 4.136 48.3 3.874 48.236 3.495 48.159 3.088 48.151 2.694 48.1 2.583 48.101 2.47 48.099 2.358 48.093 1.821 48.057 0.318 48.025 0 47.664 0.124 46.835 4.552 45.74 5.456 45.744 6.301 45.552 7.188 45.352 8.014 45.098 8.811 44.855 9.598 44.534 10.395 44.276 14.012 43.125 17.561 41.777 21.026 40.239 21.888 39.848 22.686 39.384 23.53 38.969 24.815 38.34 26.142 37.843 27.392 37.141 28.808 36.347 30.275 35.519 31.728 34.793 33.487 33.912 35.524 32.08 37.348 31.564Z" fill="#000" />
+</svg>

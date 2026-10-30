@@ -1,0 +1,212 @@
+---
+import { Image } from "astro:assets";
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import { profileOf } from "@/lib/content";
+import { type ContributionYear, weekLevels } from "@/lib/contributions";
+import type { GitHubProfile } from "@/lib/github-profile";
+import VerifiedBadge from "@/components/verified-badge.astro";
+import avatar from "@/assets/images/avatar-160.webp";
+
+interface Props {
+  name: string;
+  github: string;
+  x: string;
+  xFollowing?: number;
+  xFollowers?: number;
+  /** The line on the GitHub card, under the name. */
+  bio: string;
+  year: ContributionYear;
+  /** Stars and badges. Null until GitHub has answered once. */
+  gh: GitHubProfile | null;
+}
+
+const { name, github, x, xFollowing, xFollowers, bio, year, gh } = Astro.props;
+// The strip on the GitHub card: the last 26 weeks, as on the phone calendar.
+const strip = weekLevels(year, 26);
+const num = (n: number) => n.toLocaleString("en-US");
+
+const githubLink = profileOf(github);
+const xLink = profileOf(x);
+const xCounts = [
+  { n: xFollowing, label: "Following" },
+  { n: xFollowers, label: "Followers" },
+].filter((c): c is { n: number; label: string } => c.n !== undefined);
+---
+
+<!--
+  Paper: Hover cards · spec. A card repeats its trigger link, so it is hidden from screen readers and
+  from the tab order. The script opens one for a mouse or for keyboard focus, under its chip
+  (data-hovercard-for).
+-->
+<a
+  href={github}
+  data-hovercard="github"
+  class="hovercard absolute top-0 left-0 z-20 flex w-[280px] flex-col border border-edge bg-card"
+  tabindex="-1"
+  aria-hidden="true"
+  hidden
+>
+  <span class="flex items-center gap-2.5 px-3 pt-3">
+    <span class="flex shrink-0 rounded-md border border-frame p-0.5">
+      <Image src={avatar} alt="" width={36} height={36} class="size-9 rounded object-cover" />
+    </span>
+    <span class="flex flex-col gap-0.5">
+      <span class="font-sans text-[15px] leading-[18px] font-bold tracking-[-0.01em] text-name">{gh?.name ?? name}</span>
+      {githubLink.handle && <span class="text-[12px] leading-4 text-mute">@{githubLink.handle}</span>}
+    </span>
+  </span>
+  <span class="px-3 pt-2.5 pb-3 font-sans text-[13px] leading-5 text-dim">{bio}</span>
+  <span class="flex flex-col gap-2 border-t border-line px-3 py-2.5">
+    <span class="flex gap-5 text-[12px] leading-4 text-mute">
+      <span data-stat="contributions"><b class="text-[13px] font-semibold text-ink">{num(year.total)}</b> contributions</span>
+      {gh && <span data-stat="stars"><b class="text-[13px] font-semibold text-ink">{num(gh.stars)}</b> stars</span>}
+    </span>
+    <span class="flex gap-0.5" aria-hidden="true">
+      {strip.map((level) => <span class="cell h-2 flex-1" data-level={level} />)}
+    </span>
+  </span>
+  {
+    gh?.achievements && gh.achievements.length > 0 && (
+      <span class="flex border-t border-line px-3 py-2.5">
+        <span class="flex gap-1">
+          {gh.achievements.slice(0, 6).map((a) => (
+            <span class="relative flex" title={a.tier ? `${a.name} x${a.tier}` : a.name}>
+              <img class="badge size-7" src={a.icon} alt={a.name} width="28" height="28" loading="lazy" decoding="async" />
+              {a.tier && <span class="absolute -right-[3px] -bottom-0.5 bg-edge px-[3px] text-[9px] leading-[11px] text-ink">x{a.tier}</span>}
+            </span>
+          ))}
+        </span>
+      </span>
+    )
+  }
+  <span class="flex items-center justify-between border-t border-line px-3 py-2 text-[12px] leading-4 text-mute">
+    {githubLink.label}
+    <ArrowUpRight size={13} />
+  </span>
+</a>
+
+<a
+  href={x}
+  data-hovercard="x"
+  class="hovercard absolute top-0 left-0 z-20 flex w-[280px] flex-col border border-edge bg-card"
+  tabindex="-1"
+  aria-hidden="true"
+  hidden
+>
+  <span class="flex items-center gap-2.5 px-3 pt-3">
+    <span class="flex shrink-0 rounded-md border border-frame p-0.5">
+      <Image src={avatar} alt="" width={36} height={36} class="size-9 rounded object-cover" />
+    </span>
+    <span class="flex flex-col gap-0.5">
+      <span class="flex items-center gap-1">
+        <span class="font-sans text-[15px] leading-[18px] font-bold tracking-[-0.01em] text-name">{name}</span>
+        <VerifiedBadge />
+      </span>
+      {xLink.handle && <span class="text-[12px] leading-4 text-mute">@{xLink.handle}</span>}
+    </span>
+  </span>
+  <span class="px-3 pt-2.5 pb-3 font-sans text-[13px] leading-5 text-dim">
+    Notes on building small products, design details and what I ship each week.
+  </span>
+  {
+    xCounts.length > 0 && (
+      <span class="flex gap-5 border-t border-line px-3 py-2.5 text-[12px] leading-4 text-mute">
+        {xCounts.map((c) => (
+          <span data-stat={c.label.toLowerCase()}>
+            <b class="text-[13px] font-semibold text-ink">{num(c.n)}</b> {c.label}
+          </span>
+        ))}
+      </span>
+    )
+  }
+  <span class="flex items-center justify-between border-t border-line px-3 py-2 text-[12px] leading-4 text-mute">
+    {xLink.label}
+    <ArrowUpRight size={13} />
+  </span>
+</a>
+
+<script>
+  // Plain script, not an island: the cards are static HTML; this only opens, places and closes them.
+  const OPEN_DELAY = 300;
+  const CLOSE_DELAY = 120;
+  /** The close transition. */
+  const EXIT = 160;
+  /** Space between a card and the edge of the column. */
+  const INSET = 12;
+
+  const triggers = document.querySelectorAll<HTMLElement>("[data-hovercard-for]");
+  const cardOf = (trigger: HTMLElement) => document.querySelector<HTMLElement>(`[data-hovercard="${CSS.escape(trigger.dataset.hovercardFor!)}"]`);
+
+  let shown: HTMLElement | null = null;
+  let openTimer = 0;
+  let closeTimer = 0;
+  let hideTimer = 0;
+
+  function place(card: HTMLElement, trigger: HTMLElement) {
+    const column = card.offsetParent as HTMLElement;
+    const box = column.getBoundingClientRect();
+    const rects = trigger.getClientRects();
+    // A card goes under the last line of a link that wraps.
+    const at = rects[rects.length - 1] ?? trigger.getBoundingClientRect();
+    const left = Math.max(INSET, Math.min(at.left - box.left, box.width - card.offsetWidth - INSET));
+    card.style.translate = `${Math.round(left)}px ${Math.round(at.bottom - box.top + 8)}px`;
+  }
+
+  function open(trigger: HTMLElement) {
+    clearTimeout(closeTimer);
+    clearTimeout(hideTimer);
+    const card = cardOf(trigger);
+    if (!card) return;
+    if (shown && shown !== card) close(true);
+    card.hidden = false;
+    place(card, trigger);
+    // One frame with the card in place, so its transition runs.
+    requestAnimationFrame(() => (card.dataset.open = ""));
+    shown = card;
+  }
+
+  function close(now = false) {
+    clearTimeout(openTimer);
+    const card = shown;
+    if (!card) return;
+    shown = null;
+    delete card.dataset.open;
+    if (now) card.hidden = true;
+    else hideTimer = window.setTimeout(() => (card.hidden = true), EXIT);
+  }
+
+  const later = () => {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(() => close(), CLOSE_DELAY);
+  };
+
+  triggers.forEach((trigger) => {
+    // Mouse only: on touch the link works as before.
+    trigger.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "mouse") return;
+      clearTimeout(openTimer);
+      clearTimeout(closeTimer);
+      // With a card already open, the next one comes at once.
+      if (shown) open(trigger);
+      else openTimer = window.setTimeout(() => open(trigger), OPEN_DELAY);
+    });
+    trigger.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") later();
+    });
+    trigger.addEventListener("focus", () => {
+      if (trigger.matches(":focus-visible")) open(trigger);
+    });
+    trigger.addEventListener("blur", () => close());
+  });
+
+  // A card can be entered: it stays open under the mouse.
+  document.querySelectorAll<HTMLElement>(".hovercard").forEach((card) => {
+    card.addEventListener("pointerenter", () => clearTimeout(closeTimer));
+    card.addEventListener("pointerleave", later);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") close(true);
+  });
+</script>

@@ -1,0 +1,84 @@
+---
+import { lastWeeks, type ContributionYear } from "@/lib/contributions";
+
+interface Props {
+  year: ContributionYear;
+}
+
+const { year } = Astro.props;
+const weekCount = year.weeks.length;
+// A phone shows only the last 26 weeks (about 6 months), so the cells stay readable without a scroll.
+const PHONE_WEEKS = 26;
+const recent = lastWeeks(year, PHONE_WEEKS);
+---
+
+<!-- The contribution calendar: month labels, then the grid. -->
+<figure class="contributions relative text-[13px] leading-[18px]" aria-label={`${year.total} contributions in the last year`}>
+  <!-- A week column starts at (100% + gap) * w / weeks: the columns are flex-1 with a 2.3px gap. -->
+  <!-- On a phone the older weeks are hidden, so a label is placed from the first shown week. -->
+  <div class="months relative h-4 text-[12px] leading-4 text-mute" aria-hidden="true">
+    {
+      year.months.map((m) => (
+        <span
+          class:list={["absolute top-0 left-(--x) max-sm:left-(--x-sm)", m.week < recent.from && "max-sm:hidden"]}
+          style={`--x: calc((100% + 2.3px) * ${m.week} / ${weekCount}); --x-sm: calc((100% + 2.3px) * ${m.week - recent.from} / ${weekCount - recent.from})`}
+        >
+          {m.label}
+        </span>
+      ))
+    }
+  </div>
+
+  <div class="grid-weeks flex gap-[2.3px] pt-1.5">
+    {
+      year.weeks.map((week, w) => (
+        <div class:list={["grid flex-1 grid-rows-7 gap-[2.3px]", w < recent.from && "max-sm:hidden"]} style={`--w: ${w}; --w-sm: ${w - recent.from}`}>
+          {week.map((day) => (
+            <span class="cell aspect-square" data-level={day.level} data-date={day.date} data-count={day.count} />
+          ))}
+        </div>
+      ))
+    }
+  </div>
+
+  <div role="tooltip" class="cell-tip pointer-events-none absolute top-0 left-0 z-10 border border-edge bg-card px-2 py-1 text-[12px] leading-4 whitespace-nowrap text-mute" hidden>
+  </div>
+</figure>
+
+<script>
+  import { describeDay } from "@/lib/contributions";
+
+  // Plain script, not an island: one listener on each calendar moves a single tooltip.
+  document.querySelectorAll<HTMLElement>("figure.contributions").forEach((figure) => {
+    const tip = figure.querySelector<HTMLElement>(".cell-tip")!;
+    const grid = figure.querySelector<HTMLElement>(".grid-weeks")!;
+
+    const show = (cell: HTMLElement) => {
+      const { count, date } = describeDay({ date: cell.dataset.date!, count: Number(cell.dataset.count), level: 0 });
+      const strong = document.createElement("span");
+      strong.className = "text-ink";
+      strong.textContent = count;
+      tip.replaceChildren(strong, ` on ${date}`);
+      tip.hidden = false;
+
+      // Centre the tip above the cell, and keep it inside the figure.
+      const box = figure.getBoundingClientRect();
+      const at = cell.getBoundingClientRect();
+      const left = at.left - box.left + at.width / 2 - tip.offsetWidth / 2;
+      const max = box.width - tip.offsetWidth;
+      tip.style.translate = `${Math.round(Math.min(Math.max(left, 0), max))}px ${Math.round(at.top - box.top - tip.offsetHeight - 6)}px`;
+    };
+
+    grid.addEventListener("pointerover", (event) => {
+      const cell = (event.target as HTMLElement).closest<HTMLElement>(".cell[data-date]");
+      if (cell) show(cell);
+    });
+    // A mouse hides the tip when it leaves. A tap keeps it until the next tap outside the grid.
+    grid.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "touch") tip.hidden = true;
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (!grid.contains(event.target as Node)) tip.hidden = true;
+    });
+  });
+</script>

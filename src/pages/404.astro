@@ -1,0 +1,23 @@
+---
+import Band from "@/components/band.astro";
+import Base from "@/layouts/base.astro";
+import { site } from "@/lib/site";
+
+const ART = String.raw`+ - [ 404 ] - - - - - - - +
+|                         |
+|   cat: no such file     |
+|                         |
++ - - - - - - - - - - - - +`;
+---
+
+<Base title={`Not found · ${site.name}`} description="This page does not exist." countView={false}>
+  <main>
+    <Band i={0} class="flex flex-col items-start gap-6 px-3 pt-24 pb-16">
+      <pre class="font-mono text-[13px] leading-5 text-dim" aria-hidden="true">{ART}</pre>
+      <h1 class="font-sans text-2xl leading-[26px] font-bold tracking-[-0.02em] text-ink">Nothing lives here.</h1>
+      <p class="font-sans text-base leading-[26px] text-body">
+        The link may be old, or the page was never written. Go back to <a class="link font-medium" href="/">{site.domain}</a>.
+      </p>
+    </Band>
+  </main>
+</Base>

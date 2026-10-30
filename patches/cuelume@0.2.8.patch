@@ -1,0 +1,37 @@
+diff --git a/dist/audio/engine.js b/dist/audio/engine.js
+index c1efb7d917aa0e4b42298a7fc22ea4ef5186405e..722f36f3f9e8810516499c6374226f4941eefb0a 100644
+--- a/dist/audio/engine.js
++++ b/dist/audio/engine.js
+@@ -11,6 +11,8 @@ import { createOutput, silence } from "./output.js";
+ import { renderRecipe } from "./render.js";
+ /** Repeats closer than this walk on to the next step; a longer pause starts the walk again. */
+ const WALK_GAP_MS = 1000;
++/** Patched (glyph): a cue still waiting for audio to start after this long is dropped. */
++const STALE_MS = 150;
+ let sharedContext = null;
+ let sharedBus = null;
+ const voices = new Map();
+@@ -138,8 +140,8 @@ export function playInContext(sound, options, interaction, part = "both", gestur
+     const name = resolveSound(sound);
+     if (!enabled || !name)
+         return;
+-    if (isBlocked())
+-        return;
++    // Patched (glyph): no isBlocked() check here. Before the first click some browsers still allow audio
++    // (media engagement, a site setting), so cuelume asks; where the browser refuses, the cue stays silent.
+     const holding = gesture ? `${name}:${gesture}` : name;
+     let played;
+     if (part === "release") {
+@@ -173,8 +175,11 @@ export function playInContext(sound, options, interaction, part = "both", gestur
+     }
+     else {
+         try {
++            // Patched (glyph): a blocked browser resolves this only at the first click. A cue that late
++            // is stale: drop it, so the hovers before the click do not all sound at once.
++            const asked = performance.now();
+             void context.resume().then(() => {
+-                if (enabled && context.state === "running")
++                if (enabled && context.state === "running" && performance.now() - asked < STALE_MS)
+                     renderRecipe(context, getBus, voices, name, played, part);
+             }, () => { });
+         }

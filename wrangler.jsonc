@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "glyph",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Custom Domains: wrangler deploy creates the DNS records and certificates.
+  "routes": [
+    { "pattern": "franvy.cc", "custom_domain": true },
+    { "pattern": "www.franvy.cc", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    {
+      // Images, videos and icons uploaded in /admin. Served by the Worker at /media/<key>.
+      // Create it once before the first deploy: `pnpm dlx wrangler r2 bucket create glyph-media`.
+      "binding": "MEDIA",
+      "bucket_name": "glyph-media"
+    }
+  ],
+  "vars": {
+    // Cloudflare Access protects /admin and /api/admin (Access application "glyph admin").
+    // Empty values refuse every admin request. See src/middleware.ts.
+    "ACCESS_TEAM_DOMAIN": "https://franvy.cloudflareaccess.com",
+    "ACCESS_AUD": "23516aeecb3d7421792f870f35433e4934277c36fefd4c56ce6f5826958d935b" // the Application Audience (AUD) tag
+  },
+  "observability": {
+    "enabled": true // Workers Logs
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "glyph-db",
+      "database_id": "9c5857fc-f9f7-47c7-b0c1-6768973be348",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

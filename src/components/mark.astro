@@ -1,0 +1,14 @@
+---
+interface Props {
+  href: string;
+  /** The project's own app icon (an imported SVG). */
+  logo: { src: string };
+}
+
+const { href, logo } = Astro.props;
+---
+
+<!-- noechague.com inline link: a small mark, then the name, underlined. The mark is the site's own app icon. -->
+<a class="link whitespace-nowrap font-medium" href={href}>
+  <img src={logo.src} alt="" width="14" height="14" class="mark-icon mr-1.5 inline-block size-3.5 align-[-2px]" /><slot />
+</a>

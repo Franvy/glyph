@@ -1,0 +1,60 @@
+<script>
+  // Interface sounds, synthesised live by cuelume (Web Audio, no files). The "mech" material suits the monospace frame.
+  // bind() plays a link or button that carries a data-cuelume-* attribute. Most markup carries none, so a capture
+  // listener on window, which runs before cuelume's on document, gives each link or button its cue on first touch.
+  import { bind, play, setEnabled, setTheme, unlock } from "cuelume";
+  import { cueFor, gate } from "@/lib/sound";
+
+  const MARKED = ["tap", "select", "toggle", "open", "close", "navigate"].map((cue) => `[data-cuelume-${cue}]`).join();
+
+  function mark(event: Event) {
+    if (!(event.target instanceof Element)) return;
+    const el = event.target.closest("a, button");
+    if (!el || el.matches(MARKED)) return;
+    const cue = cueFor(
+      {
+        tag: el.tagName,
+        href: el.getAttribute("href"),
+        pressed: el.getAttribute("aria-pressed"),
+        download: el.hasAttribute("download"),
+      },
+      new URL(location.href),
+    );
+    if (cue) el.setAttribute(`data-cuelume-${cue}`, "");
+  }
+
+  // Sweeping the pointer across the skills ticks each tag like a key. The gate keeps a fast sweep from piling up.
+  const sweep = gate(45);
+  function tick(event: PointerEvent) {
+    if (event.pointerType !== "mouse" || !(event.target instanceof Element)) return;
+    const skill = event.target.closest(".skill");
+    if (!skill || (event.relatedTarget instanceof Node && skill.contains(event.relatedTarget))) return;
+    if (sweep(event.timeStamp)) play("type", { emphasis: "subtle", input: "mouse" });
+  }
+
+  // A contact button rolls its icon on hover: one soft tick as the copy rolls in.
+  function roll(event: PointerEvent) {
+    if (event.pointerType !== "mouse" || !(event.target instanceof Element)) return;
+    const cta = event.target.closest(".cta");
+    if (!cta || (event.relatedTarget instanceof Node && cta.contains(event.relatedTarget))) return;
+    play("select", { emphasis: "subtle", input: "mouse" });
+  }
+
+  // The first gesture is where the browser lets audio start. It rings "ready", so the reader hears that sound is on.
+  // A link or button rings its own cue instead.
+  const GESTURES = ["pointerdown", "keydown"] as const;
+  function greet(event: Event) {
+    for (const type of GESTURES) window.removeEventListener(type, greet, { capture: true });
+    if (document.documentElement.dataset.sound === "off") return;
+    if (event.target instanceof Element && event.target.closest(`a, button, ${MARKED}`)) return;
+    void unlock().then((on) => on && play("ready"));
+  }
+
+  setTheme("mech");
+  setEnabled(document.documentElement.dataset.sound !== "off");
+  for (const type of ["pointerdown", "click"]) window.addEventListener(type, mark, { capture: true });
+  for (const type of GESTURES) window.addEventListener(type, greet, { capture: true });
+  document.addEventListener("pointerover", tick);
+  document.addEventListener("pointerover", roll);
+  bind();
+</script>

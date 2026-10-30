@@ -1,0 +1,30 @@
+---
+import Contrast from "@lucide/astro/icons/contrast";
+---
+
+<button type="button" aria-label="Toggle light and dark theme" data-cuelume-toggle class="theme-toggle press nav-link text-body">
+  <Contrast size={16} />
+</button>
+
+<script>
+  // Plain script, not an island: it is wired up before the load event, so an early click is never lost.
+  type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => unknown };
+
+  function toggle() {
+    const root = document.documentElement;
+    const next = root.dataset.theme === "light" ? "dark" : "light";
+    const apply = () => {
+      if (next === "light") root.dataset.theme = "light";
+      else delete root.dataset.theme;
+    };
+    try {
+      localStorage.setItem("theme", next);
+    } catch {}
+    const doc = document as ViewTransitionDocument;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (doc.startViewTransition && !reduced) doc.startViewTransition(apply);
+    else apply();
+  }
+
+  document.querySelectorAll(".theme-toggle").forEach((button) => button.addEventListener("click", toggle));
+</script>

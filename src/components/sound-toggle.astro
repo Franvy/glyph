@@ -1,0 +1,52 @@
+---
+import Volume2 from "@lucide/astro/icons/volume-2";
+import VolumeX from "@lucide/astro/icons/volume-x";
+---
+
+<!-- aria-pressed is fixed by the script on load; the icon follows html[data-sound] from first paint. -->
+<button
+  type="button"
+  aria-label="Sound effects"
+  aria-pressed="true"
+  data-cuelume-toggle
+  class="sound-toggle press nav-link text-body"
+>
+  <Volume2 size={16} class="sound-on" />
+  <VolumeX size={16} class="sound-off" />
+</button>
+
+<script>
+  import { play, setEnabled, unlock } from "cuelume";
+  import { SOUND_KEY } from "@/lib/sound";
+
+  const root = document.documentElement;
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".sound-toggle");
+  let muting = 0;
+
+  function sync() {
+    const on = root.dataset.sound !== "off";
+    buttons.forEach((button) => button.setAttribute("aria-pressed", String(on)));
+  }
+
+  function toggle() {
+    const on = root.dataset.sound === "off";
+    if (on) delete root.dataset.sound;
+    else root.dataset.sound = "off";
+    try {
+      localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+    } catch {}
+    window.clearTimeout(muting);
+    if (on) {
+      // Sound was off as this click went down, so cuelume stayed silent: play the switch now, from the gesture.
+      setEnabled(true);
+      void unlock().then(() => play("toggle"));
+    } else {
+      // cuelume has just played the switch going off. Let it ring out, then mute.
+      muting = window.setTimeout(() => setEnabled(false), 160);
+    }
+    sync();
+  }
+
+  sync();
+  buttons.forEach((button) => button.addEventListener("click", toggle));
+</script>

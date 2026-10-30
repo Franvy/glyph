@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 336 336" fill="none">
+  <!-- Paper: Circle → "Logo / 蓝鸟" (frame 74-0). Static copy of components/foundations/logo/logo-mark.tsx for favicons and <img>. -->
+  <defs>
+    <path id="bird" d="M34.495 29.388C33.865 29.252 32.753 28.85 32.132 28.629C31.487 28.4 29.928 27.905 29.385 27.58C27.702 26.473 25.893 24.514 24.775 22.846C23.584 20.964 22.815 17.894 22.752 15.735C22.712 14.364 23.236 11.458 23.818 10.222C24.333 9.125 25.949 5.782 26.682 5.042C31.238 0.445 38.96 -1.681 44.853 1.558C46.586 2.501 47.826 3.338 48.887 5.053C49.602 6.185 49.995 7.361 50.363 8.643C51.519 12.01 51.577 14.709 50.74 18.155C50.564 18.88 50.422 19.968 50.231 20.806C50.225 20.831 50.219 20.856 50.213 20.881C49.96 21.125 49.624 21.427 49.389 21.672C51.211 20.914 53.964 18.659 55.665 17.496C56.774 16.738 57.8 16.126 58.977 15.471C59.588 16.155 60.484 16.578 61.163 17.173C63.593 19.305 66.059 21.353 68.629 23.313C69.152 23.711 69.676 24.134 70.119 24.618C70.329 24.865 70.636 25.525 70.538 25.688C70.337 26.018 68.644 27.467 68.353 27.696C66.853 28.883 65.338 29.967 63.746 31.001C62.837 31.592 62.047 32.217 61.142 32.806C60.374 33.307 59.553 33.609 58.828 34.045C56.536 35.421 54.132 36.559 51.718 37.704C50.978 38.055 49.83 38.327 49.021 38.652C48.233 38.968 47.42 39.332 46.636 39.631C44.277 40.507 41.896 41.319 39.493 42.067C38.283 42.44 37.013 42.592 35.815 43.018C35.319 43.195 34.836 43.429 34.451 43.798C33.541 44.668 32.803 45.732 31.972 46.677C31.39 47.338 30.758 47.949 30.149 48.585C29.05 49.732 25.513 53.586 23.876 53.413C23.494 53.372 22.979 53.173 22.736 52.864C22.483 52.543 22.515 52.083 22.568 51.701C22.75 50.391 26.036 47.821 27.109 46.838C27.785 46.218 28.448 45.482 29.171 44.931C29.07 44.513 28.246 44.623 27.861 44.608C26.986 44.615 26.117 44.587 25.248 44.722C24.579 44.825 23.849 45.101 23.181 45.154C20.145 45.395 17.084 45.265 14.041 45.316C13.866 45.319 13.65 45.328 13.477 45.311C12.924 45.367 12.302 45.338 11.742 45.35C10.877 45.37 10.005 45.32 9.14 45.316C7.49 45.307 5.841 45.317 4.194 45.214C3.935 45.198 3.82 44.969 3.578 44.909C3.228 44.838 2.852 44.831 2.488 44.783C2.385 44.784 2.281 44.782 2.178 44.776C1.682 44.743 0.293 44.713 0 44.377C0.114 43.605 4.204 42.586 5.039 42.589C5.819 42.411 6.639 42.225 7.402 41.988C8.138 41.761 8.865 41.463 9.601 41.223C12.941 40.151 16.219 38.896 19.42 37.464C20.216 37.1 20.953 36.668 21.733 36.282C22.919 35.696 24.145 35.233 25.3 34.579C26.607 33.84 27.963 33.07 29.304 32.394C30.929 31.574 32.81 29.868 34.495 29.388Z"/>
+    <clipPath id="face-clip">
+      <rect width="336" height="336" rx="81"/>
+    </clipPath>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5196FF"/>
+      <stop offset="0.16" stop-color="#3380FF"/>
+      <stop offset="0.62" stop-color="#216FFD"/>
+      <stop offset="1" stop-color="#1760FA"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0.3" y1="0" x2="0.62" y2="1">
+      <stop offset="0" stop-color="#F6FAFF"/>
+      <stop offset="0.09" stop-color="#E2EDFE"/>
+      <stop offset="0.45" stop-color="#D2E1FB"/>
+      <stop offset="0.9" stop-color="#DEEBFF"/>
+      <stop offset="1" stop-color="#F1F7FF"/>
+    </linearGradient>
+    <!-- The two CSS inset shadows: a negative spread grows the hole, then it is offset, blurred and cut back to the face. -->
+    <filter id="inset" x="-50" y="-50" width="436" height="436" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="light-hole"/>
+      <feOffset in="light-hole" dy="7" result="light-hole-offset"/>
+      <feGaussianBlur in="light-hole-offset" stdDeviation="3" result="light-hole-blur"/>
+      <feComposite in="SourceAlpha" in2="light-hole-blur" operator="out" result="light-mask"/>
+      <feFlood flood-color="#B4D4FF" flood-opacity="0.8"/>
+      <feComposite in2="light-mask" operator="in" result="light"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="6.7" result="dark-hole"/>
+      <feOffset in="dark-hole" dy="-20.2" result="dark-hole-offset"/>
+      <feGaussianBlur in="dark-hole-offset" stdDeviation="11.25" result="dark-hole-blur"/>
+      <feComposite in="SourceAlpha" in2="dark-hole-blur" operator="out" result="dark-mask"/>
+      <feFlood flood-color="#093AAF" flood-opacity="0.9"/>
+      <feComposite in2="dark-mask" operator="in" result="dark"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="dark"/>
+        <feMergeNode in="light"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g clip-path="url(#face-clip)">
+    <rect width="336" height="336" rx="81" fill="url(#face)" filter="url(#inset)"/>
+    <g transform="scale(3.36) translate(11 21.14) scale(1.099)" stroke-linecap="round" stroke-linejoin="round">
+      <use href="#bird" transform="translate(0.62 1.73)" fill="#14479C" stroke="#14479C" stroke-width="2.01" opacity="0.38"/>
+      <use href="#bird" fill="#1B5AC4" stroke="#1B5AC4" stroke-width="3.9" opacity="0.32"/>
+      <use href="#bird" fill="#1B5AC4" stroke="#1B5AC4" stroke-width="2.8" opacity="0.48"/>
+      <use href="#bird" fill="#1B5AC4" stroke="#1B5AC4" stroke-width="2.05" opacity="0.68"/>
+      <use href="#bird" fill="#1B5AC4" stroke="#1B5AC4" stroke-width="1.2" opacity="0.88"/>
+      <use href="#bird" fill="#1B5AC4" stroke="#1B5AC4" stroke-width="0.5"/>
+      <use href="#bird" fill="url(#body)"/>
+    </g>
+  </g>
+</svg>

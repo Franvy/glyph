@@ -1,0 +1,18 @@
+diff --git a/dist/assets/fonts/vite-plugin-fonts.js b/dist/assets/fonts/vite-plugin-fonts.js
+index cc23d3d84113577b32cd70f6d99a58154b98486c..e684538fd3bffb857a7ab8e2a4f86d09d406b1e7 100644
+--- a/dist/assets/fonts/vite-plugin-fonts.js
++++ b/dist/assets/fonts/vite-plugin-fonts.js
+@@ -294,7 +294,12 @@ base: new URL(CACHE_DIR, isBuild ? settings.config.cacheDir : settings.dotAstroD
+ 			if (built) {
+ 				return;
+ 			}
+-			if (sync || !settings.config.fonts?.length || this.environment.config.command === "serve") {
++			// In dev, Vite's server.restart() (wrangler.jsonc changes) reuses this plugin: the new server's
++			// buildStart runs before the old server's buildEnd, so a cleanup here empties the live font data.
++			if (this.environment.config.command === "serve") {
++				return;
++			}
++			if (sync || !settings.config.fonts?.length) {
+ 				cleanup();
+ 				return;
+ 			}

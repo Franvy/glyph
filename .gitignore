@@ -1,0 +1,24 @@
+.DS_Store
+.idea/
+node_modules/
+
+# build
+dist/
+.astro/
+.wrangler/
+
+# env: only .env.example is committed
+.env*
+!.env.example
+.dev.vars
+
+# tests
+test-results/
+playwright-report/
+
+# personal agent setup: kept on each machine, never committed
+.claude/
+CLAUDE.local.md
+skills-lock.json
+.agents/
+.playwright-mcp/

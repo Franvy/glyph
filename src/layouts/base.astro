@@ -1,0 +1,76 @@
+---
+import { Font } from "astro:assets";
+import { BackgroundShader } from "@/components/shaders";
+import Sound from "@/components/sound.astro";
+import { FESTIVALS, festivalTable, shanghaiDate } from "@/lib/festivals";
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  /** Absolute or root-relative URL of the share image. */
+  image?: string;
+  type?: "website" | "article";
+  /** Count this load as a page view (off for the 404 page). */
+  countView?: boolean;
+  /** Keep the page out of search results (the admin page). */
+  noindex?: boolean;
+}
+
+const { title, description, image, type = "website", countView = true, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = image ? new URL(image, Astro.site) : undefined;
+
+// One page view per load, kept as a promise: the footer reads the totals from it instead of asking again.
+const viewScript = `window.__glyphCounts=fetch("/api/counters",{method:"POST",headers:{"content-type":"application/json"},body:'{"name":"views"}',keepalive:true}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})`;
+
+// Runs before first paint so a saved light theme never flashes dark.
+const themeScript = `try{if(localStorage.getItem("theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
+
+// The same for sound: a muted page never shows the speaker icon, and cuelume starts muted.
+const soundScript = `try{if(localStorage.getItem("sound")==="off")document.documentElement.dataset.sound="off"}catch(e){}`;
+
+// The intro plays on the first load in a tab, unless the reader asks for less motion. It is set before first paint,
+// so the full page never flashes first. "done" comes when the veil's animation ends, or after 3s if it never runs.
+const introScript = `try{if(!sessionStorage.getItem("intro")&&!matchMedia("(prefers-reduced-motion: reduce)").matches){sessionStorage.setItem("intro","1");var r=document.documentElement,d=function(){r.dataset.intro="done"};r.dataset.intro="play";addEventListener("animationend",function(e){if(e.animationName==="intro-veil")d()});setTimeout(d,3000)}}catch(e){}`;
+
+// Most pages are static, so the browser picks the festival, from a table of this year and the next three
+// (rebuilt on each deploy). Shanghai is UTC+8 with no daylight saving. ?festival=<id> previews a theme; ?festival=none turns it off.
+const festivals = festivalTable(Number(shanghaiDate(new Date()).slice(0, 4)), 4);
+const festivalScript = `try{var t=${JSON.stringify(festivals)},ids=${JSON.stringify(FESTIVALS.map((f) => f.id))},q=new URLSearchParams(location.search).get("festival"),f=q===null?t[new Date(Date.now()+288e5).toISOString().slice(0,10)]:ids.indexOf(q)>=0?q:null;if(f)document.documentElement.dataset.festival=f}catch(e){}`;
+
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111111" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    <Font cssVariable="--font-paper-mono" preload />
+    <Font cssVariable="--font-inter" preload />
+    <script is:inline set:html={themeScript} />
+    <script is:inline set:html={soundScript} />
+    <script is:inline set:html={introScript} />
+    <script is:inline set:html={festivalScript} />
+    {countView && <script is:inline set:html={viewScript} />}
+  </head>
+  <body>
+    <BackgroundShader client:only="react" />
+    <slot />
+    <Sound />
+  </body>
+</html>

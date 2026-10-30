@@ -1,0 +1,20 @@
+---
+// The drawing in a project card's preview frame: an isometric machine that works the way the product does
+// (figures/, built into src/figures with `pnpm figures`). Static SVG; src/components/figures/motion.ts moves it.
+import { figureOf } from "@/data/figures";
+
+interface Props {
+  project: string;
+}
+
+const svgs = import.meta.glob<string>("../figures/*.svg", { query: "?raw", import: "default", eager: true });
+const name = figureOf(Astro.props.project);
+const svg = name ? svgs[`../figures/${name}.svg`] : undefined;
+---
+
+{svg && <div class="project-figure iso absolute inset-0" data-figure={name} set:html={svg} />}
+
+<script>
+  import { startFigures } from "@/components/figures/motion";
+  startFigures();
+</script>
