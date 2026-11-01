@@ -38,6 +38,11 @@ describe("bannerScene", () => {
     expect(bannerScene({ ...none, festival: "not-a-festival", weather: "fog" })).toBe("fog");
   });
 
+  it("shows Halloween before the weather, but lets an explicit scene win", () => {
+    expect(bannerScene({ ...none, festival: "halloween", weather: "rain" })).toBe("halloween");
+    expect(bannerScene({ ...none, picked: "clear", festival: "halloween", weather: "rain" })).toBe("clear");
+  });
+
   it("lets the test switch override everything", () => {
     expect(bannerScene({ picked: "snow", festival: "spring-festival", weather: "rain", saved: "clear" })).toBe("snow");
   });

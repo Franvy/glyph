@@ -1,0 +1,130 @@
+[
+  {
+    "scene": "clear",
+    "number": "01",
+    "title": [
+      "晴天，",
+      "慢慢逛。"
+    ],
+    "caption": "小小的花园，一整天的好时光。",
+    "theme": "light",
+    "accent": "#1f6fe0",
+    "label": "晴天",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "cloudy",
+    "number": "02",
+    "title": [
+      "看云",
+      "慢慢走。"
+    ],
+    "caption": "今天不着急，看云从头顶经过。",
+    "theme": "light",
+    "accent": "#6a9ee9",
+    "label": "多云",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "rain",
+    "number": "03",
+    "title": [
+      "雨天，",
+      "多坐一会儿。"
+    ],
+    "caption": "雨落在外面，树下还有一个干爽的位置。",
+    "theme": "dark",
+    "accent": "#4a8fef",
+    "label": "雨天",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "storm",
+    "number": "04",
+    "title": [
+      "外面打雷，",
+      "屋里有猫。"
+    ],
+    "caption": "两只小眼睛，安心躲在屋里。",
+    "theme": "dark",
+    "accent": "#8db4f0",
+    "label": "雷雨",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "snow",
+    "number": "05",
+    "title": [
+      "初雪来了，",
+      "脚印也来了。"
+    ],
+    "caption": "新落的雪，熟悉的小小猫爪印。",
+    "theme": "light",
+    "accent": "#1f6fe0",
+    "label": "下雪",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "fog",
+    "number": "06",
+    "title": [
+      "雾里，",
+      "慢一点。"
+    ],
+    "caption": "花园不着急，慢慢从雾里出现。",
+    "theme": "light",
+    "accent": "#8f8b83",
+    "label": "雾天",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "spring",
+    "number": "07",
+    "title": [
+      "再放一朵",
+      "小烟花。"
+    ],
+    "caption": "今晚没有月亮，煤球还有烟花。",
+    "theme": "dark",
+    "accent": "#f0603f",
+    "label": "春节",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "halloween",
+    "number": "08",
+    "title": [
+      "今晚有点",
+      "小神秘。"
+    ],
+    "caption": "借来一顶帽子，等一位害羞的小客人。",
+    "theme": "dark",
+    "accent": "#e99a45",
+    "label": "万圣节",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  }
+]

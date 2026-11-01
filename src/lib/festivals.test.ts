@@ -21,6 +21,7 @@ describe("festivalDates", () => {
     expect(dates["2026-01-01"]).toBe("new-year");
     expect(dates["2026-05-01"]).toBe("labour-day");
     expect(dates["2026-10-01"]).toBe("national-day");
+    expect(dates["2026-10-31"]).toBe("halloween");
   });
 
   it("finds New Year's Eve when the twelfth lunar month has 29 days", () => {
@@ -59,5 +60,12 @@ describe("festivalOn", () => {
 
   it("is null on an ordinary day", () => {
     expect(festivalOn(new Date("2026-10-22T04:00:00Z"))).toBeNull();
+  });
+
+  it("enters and leaves Halloween at Shanghai midnight", () => {
+    expect(festivalOn(new Date("2026-10-30T15:59:59Z"))).toBeNull();
+    expect(festivalOn(new Date("2026-10-30T16:00:00Z"))).toBe("halloween");
+    expect(festivalOn(new Date("2026-10-31T15:59:59Z"))).toBe("halloween");
+    expect(festivalOn(new Date("2026-10-31T16:00:00Z"))).toBeNull();
   });
 });

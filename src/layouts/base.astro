@@ -37,7 +37,7 @@ const introScript = `try{if(!sessionStorage.getItem("intro")&&!matchMedia("(pref
 // Most pages are static, so the browser picks the festival, from a table of this year and the next three
 // (rebuilt on each deploy). Shanghai is UTC+8 with no daylight saving. ?festival=<id> previews a theme; ?festival=none turns it off.
 const festivals = festivalTable(Number(shanghaiDate(new Date()).slice(0, 4)), 4);
-const festivalScript = `try{var t=${JSON.stringify(festivals)},ids=${JSON.stringify(FESTIVALS.map((f) => f.id))},q=new URLSearchParams(location.search).get("festival"),f=q===null?t[new Date(Date.now()+288e5).toISOString().slice(0,10)]:ids.indexOf(q)>=0?q:null;if(f)document.documentElement.dataset.festival=f}catch(e){}`;
+const festivalScript = `try{var t=${JSON.stringify(festivals)},ids=${JSON.stringify(FESTIVALS.map((f) => f.id))},q=new URLSearchParams(location.search).get("festival"),refresh=function(){var f=q===null?t[new Date(Date.now()+288e5).toISOString().slice(0,10)]:ids.indexOf(q)>=0?q:null;if(f)document.documentElement.dataset.festival=f;else delete document.documentElement.dataset.festival;clearTimeout(timer);timer=setTimeout(refresh,864e5-((Date.now()+288e5)%864e5)+20)},timer;refresh();document.addEventListener("visibilitychange",function(){if(!document.hidden)refresh()})}catch(e){}`;
 
 ---
 

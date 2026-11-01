@@ -12,6 +12,8 @@
     "check": "astro check",
     "cf-typegen": "wrangler types",
     "figures": "node figures/build.mjs",
+    "garden:covers": "node figures/garden-covers.mjs",
+    "garden:covers:zh": "node figures/garden-covers-zh.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { CANDY, decorations, ghostFrame, HAT_TOP, pumpkinBoxes, summonGhost, WITCH_HAT, type Ghost } from "@/lib/garden/halloween";
 import { burstSound, dropSound, lampSound, petSound, popSound, skySound, yarnSound } from "@/components/garden-sound";
 import { type Cat, newCat, poseOf, step } from "@/lib/garden/meiqiu";
 import { tonightsPhase } from "@/lib/garden/moon";
@@ -104,6 +105,12 @@ interface Garden {
   puffs: Puff[];
   bits: Bit[];
   fade: { from: ImageData; age: number } | null;
+  pumpkinLit: boolean;
+  ghost: Ghost | null;
+  lastTreat: number;
+  petUntil: number;
+  blinkUntil: number;
+  targetSize: number;
 }
 
 const nightOf = (theme: Theme) => theme === "dark";
@@ -111,17 +118,23 @@ const nightOf = (theme: Theme) => theme === "dark";
 function hits(g: Garden) {
   const p = g.pointer;
   const { l, cat } = g;
-  if (!p) return { cat: false, house: false, grass: false, sky: false, crackers: false };
-  const hidden = g.scene === "storm"; // 煤球 is indoors
-  const onCat = !hidden && p.x >= cat.x && p.x <= cat.x + 16 && p.y >= l.ground - 14 && p.y <= l.ground;
-  const onHouse = p.x >= l.house.x && p.x <= l.house.x + l.house.w && p.y >= l.house.top && p.y <= l.ground;
+  if (!p) return { cat: false, pumpkin: false, house: false, grass: false, sky: false, crackers: false };
+  const inside = (x: number, y: number, w: number, h: number) => {
+    const px = Math.max(0, (g.targetSize - w) / 2);
+    const py = Math.max(0, (g.targetSize - h) / 2);
+    return p.x >= x - px && p.x <= x + w + px && p.y >= y - py && p.y <= y + h + py;
+  };
+  const onCat = g.scene !== "storm" && inside(cat.x, l.ground - 14, 16, 14);
+  const onPumpkin = g.scene === "halloween" && !onCat && pumpkinBoxes(l).some((b) => inside(b.x, b.y, b.w, b.h));
+  const onHouse = !onCat && !onPumpkin && inside(l.house.x, l.house.top, l.house.w, l.ground - l.house.top);
   const box = g.scene === "spring" && g.popped < CRACKERS ? crackerBox(l) : null;
-  const onCrackers = !!box && p.x >= box.x && p.x < box.x + box.w && p.y >= box.y && p.y < box.y + box.h;
+  const onCrackers = !!box && inside(box.x, box.y, box.w, box.h);
   return {
     cat: onCat,
-    house: onHouse && !onCat,
-    grass: !onCat && !onHouse && p.y >= l.ground - 8,
-    sky: p.y < l.ground - 18,
+    pumpkin: onPumpkin,
+    house: onHouse,
+    grass: !onCat && !onPumpkin && !onHouse && p.y >= l.ground - 8,
+    sky: !onCat && !onPumpkin && !onHouse && p.y < l.ground - 18,
     crackers: onCrackers,
   };
 }
@@ -173,6 +186,7 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
   windowLights();
 
   sprite(sky.back, 0, 0, false, 0);
+  if (scene === "halloween") sprite(decorations(l, night, time, g.pumpkinLit, still), 0, 0);
 
   if (scene === "spring") {
     sprite(crackers(l, g.popped), 0, 0, false, 0);
@@ -204,7 +218,7 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
   const away = g.yarn.to >= g.yarn.from ? -1 : 1;
   for (let i = 0; i < 10; i++) put(yx + (away < 0 ? -1 - i : 6 + i), G - 1 - (i % 4 === 1 || i % 4 === 2 ? 1 : 0), "g4");
 
-  if (night && (scene === "clear" || scene === "cloudy")) {
+  if ((night && (scene === "clear" || scene === "cloudy")) || scene === "halloween") {
     for (const f of g.fireflies) {
       if (Math.sin(time * 2 + f.phase) < -0.3) continue;
       const x = f.x + Math.sin(time * 0.5 + f.phase) * 4;
@@ -245,6 +259,7 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
       scarf.push([6, r + 1, "gold"], [11, r + 1, "red"]);
       sprite(scarf, Math.round(cat.x), oy, cat.dir === 1);
     }
+    if (scene === "halloween") sprite(WITCH_HAT, Math.round(cat.x) + 2, oy + HAT_TOP[pose], cat.dir === 1, 12);
     if (cat.mode === "sleep") {
       const rise = (time * 2) % 6;
       sprite(ZED_BIG, cat.x + 13, oy - 2 - Math.floor(rise / 2), false, 3);
@@ -252,6 +267,12 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
     }
   }
   for (const h of g.hearts) {
+    if (scene === "halloween") {
+      ctx.globalAlpha = still ? 1 : Math.min(1, (0.8 - h.age) / 0.3);
+      sprite(CANDY, h.x - 2, h.y - (still ? 0 : Math.floor(h.age / 0.8 * 6)), false, 9);
+      ctx.globalAlpha = 1;
+      continue;
+    }
     if (h.age > 0.9 && Math.floor(h.age * 10) % 2 === 0) continue;
     const y = h.y - h.age * 5;
     if (scene === "spring") {
@@ -262,6 +283,13 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
         put(h.x + 6, y - 1, "gold");
       }
     } else sprite(HEART, h.x, y, false, 5);
+  }
+
+  if (scene === "halloween" && g.ghost) {
+    const frame = ghostFrame(g.ghost, time, still);
+    ctx.globalAlpha = frame.opacity;
+    sprite(frame.dots, 0, 0);
+    ctx.globalAlpha = 1;
   }
 
   for (const p of g.puffs) {
@@ -307,7 +335,7 @@ function dither(ctx: CanvasRenderingContext2D, from: ImageData, step: number) {
   ctx.putImageData(now, 0, 0);
 }
 
-/** 煤球's garden: a pixel scene in the site's blues that 煤球 wanders around, in one of seven themes. */
+/** 煤球's garden: a pixel scene in the site's blues that 煤球 wanders around, in one of eight themes. */
 export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; still: boolean; scene?: SceneName }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -342,7 +370,7 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         cat: still ? { ...newCat(startX), mode: "sleep", timer: Infinity } : (g?.cat ?? newCat(startX)),
         yarn: g?.yarn ?? { x: l.bowl - 34, from: l.bowl - 34, to: l.bowl - 34, t: 1 },
         fireflies:
-          g?.fireflies ??
+          (scene === "halloween" && !night ? [] : g?.fireflies) ??
           [0.27, 0.68, 0.16, 0.45, 0.94].map((fx, i) => ({ x: Math.round(w * fx), y: l.ground - [23, 25, 29, 41, 43][i], phase: i * 1.7 })),
         hearts: [],
         sway: new Map(),
@@ -363,6 +391,12 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         puffs: [],
         bits: g?.l.w === w ? g.bits.filter((b) => b.key !== "drop") : [],
         fade: fade ?? g?.fade ?? null,
+        pumpkinLit: night,
+        ghost: null,
+        lastTreat: -Infinity,
+        petUntil: 0,
+        blinkUntil: 0,
+        targetSize: 0,
       };
       g.cat = { ...g.cat, x: Math.min(g.cat.x, l.spots.maxX) };
       gardenRef.current = g;
@@ -373,15 +407,20 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       if (!g) return;
       const hit = hits(g);
       let cat = g.cat;
-      if (still) cat = { ...cat, mode: hit.cat ? "happy" : "sleep" };
+      if (still) cat = { ...cat, mode: hit.cat ? "happy" : cat.mode };
+      if (scene === "halloween" && g.time < g.petUntil) cat = { ...cat, mode: "happy" };
       let pose = poseOf(cat, g.time);
       if (scene === "snow" && (pose === "idle" || pose === "blink")) pose = "happy"; // 煤球 loves snow
+      if (scene === "halloween" && g.time < g.blinkUntil) pose = "blink";
       draw(ctx, { ...g, cat }, theme, pose, hit.house, still);
       if (g.fade) {
         const stepNo = Math.floor(g.fade.age / FADE_STEP) + 1;
         if (stepNo >= FADE_STEPS) g.fade = null;
         else dither(ctx, g.fade.from, stepNo);
       }
+      canvas.dataset.pumpkinLit = String(g.pumpkinLit);
+      canvas.dataset.ghost = String(!!g.ghost && (still || g.time - g.ghost.born < 1.6));
+      wrap.querySelector('[data-garden-action="pumpkin"]')?.setAttribute("aria-pressed", String(g.pumpkinLit));
       canvas.dataset.catX = String(Math.round((g.cat.x + 8) * CELL));
       canvas.dataset.catY = String(Math.round((g.l.ground - 6) * CELL));
       canvas.dataset.catMode = scene === "storm" ? "hidden" : cat.mode;
@@ -403,11 +442,7 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       const { l } = g;
       const w = l.w;
       const pan = (x: number) => panAt(x, w);
-      if (hit.cat && !g.overCat) {
-        g.pets += 1;
-        g.hearts.push({ x: g.cat.x + 6, y: l.ground - 18, age: 0 });
-        petSound(petCue(scene), pan(g.cat.x + 8));
-      }
+      if (hit.cat && !g.overCat) pet();
       g.overCat = hit.cat;
       // The lamps click on, unless rain has lit them already.
       if (hit.house && !g.overHouse && scene !== "rain" && scene !== "storm") lampSound(pan(l.house.x + l.house.w / 2));
@@ -430,7 +465,7 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       g.cat = step(
         g.cat,
         dt,
-        { hoverCat: hit.cat, hoverHouse: hit.house && !rainy, pounce: g.pounce, spots },
+        { hoverCat: hit.cat || g.time < g.petUntil, hoverHouse: hit.house && !rainy, pounce: g.pounce, spots },
         Math.random,
       );
       g.pounce = null;
@@ -481,12 +516,39 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         y.t = Math.min(1, y.t + dt / 0.8);
         y.x = y.from + (y.to - y.from) * (1 - (1 - y.t) ** 3);
       }
-      g.hearts = g.hearts.map((h) => ({ ...h, age: h.age + dt })).filter((h) => h.age < 1.2);
+      g.hearts = g.hearts.map((h) => ({ ...h, age: h.age + dt })).filter((h) => h.age < (scene === "halloween" ? 0.8 : 1.2));
       for (const f of l.flowers) {
         const near = Math.abs(g.cat.x + 8 - f.x) < 4 && g.cat.mode !== "sit";
         const left = Math.max(0, (g.sway.get(f.x) ?? 0) - dt);
         g.sway.set(f.x, near ? 0.4 : left);
       }
+    };
+
+    const pet = () => {
+      if (!g) return;
+      const now = performance.now() / 1000;
+      if (scene === "halloween" && now - g.lastTreat < 1) return;
+      g.lastTreat = now;
+      g.pets++;
+      if (scene === "halloween") {
+        g.petUntil = g.time + 0.8;
+        g.blinkUntil = 0;
+        g.cat = { ...g.cat, mode: "happy", timer: 0.8 };
+      }
+      g.hearts = [...g.hearts, { x: g.cat.x + 6, y: g.l.ground - (scene === "halloween" ? 31 : 18), age: 0 }].slice(-12);
+      petSound(petCue(scene), panAt(g.cat.x + 8, g.l.w));
+    };
+    const pumpkin = () => {
+      if (!g) return;
+      g.pumpkinLit = !g.pumpkinLit;
+      g.blinkUntil = still ? 0 : g.time + 0.6;
+    };
+    const ghost = (x: number, y: number) => {
+      if (!g) return;
+      const next = summonGhost(g.ghost, g.l, x, y, g.time);
+      if (next === g.ghost && !still) return;
+      g.ghost = still ? (g.ghost ? null : next) : next;
+      if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
     };
 
     build();
@@ -499,13 +561,14 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
     // Measured from the drawn box, so a preview scaled down in /admin still hits the right cell.
     const toGrid = (e: PointerEvent) => {
       const box = canvas.getBoundingClientRect();
+      if (g) g.targetSize = e.pointerType === "touch" ? 44 * canvas.width / box.width : 0;
       return { x: ((e.clientX - box.left) / box.width) * canvas.width, y: ((e.clientY - box.top) / box.height) * canvas.height };
     };
     const onMove = (e: PointerEvent) => {
       if (!g) return;
       g.pointer = toGrid(e);
       const hit = hits(g);
-      canvas.style.cursor = hit.cat || hit.house || hit.grass || hit.crackers ? "pointer" : "default";
+      canvas.style.cursor = hit.cat || hit.pumpkin || hit.house || hit.grass || hit.crackers || (scene === "halloween" && hit.sky) ? "pointer" : "default";
       if (still) render();
     };
     const onLeave = () => {
@@ -514,10 +577,21 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       if (still) render();
     };
     const onDown = (e: PointerEvent) => {
-      if (!g || still) return;
+      if (!g || (e.target as HTMLElement).closest("button")) return;
       g.pointer = toGrid(e);
       const hit = hits(g);
       const { l } = g;
+      if (scene === "halloween") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.pumpkin) { pumpkin(); render(); return; }
+        if (hit.sky && night) { ghost(g.pointer.x, g.pointer.y); render(); return; }
+        if (hit.sky && !night) {
+          g.fireflies = [...g.fireflies, { ...g.pointer, phase: g.time }].slice(-MAX_FIREFLIES);
+          render();
+          return;
+        }
+      }
+      if (still) return;
       if (hit.grass) {
         const to = Math.max(l.spots.minX, Math.min(l.spots.maxX + 10, g.pointer.x - 3));
         g.yarn = { x: g.yarn.x, from: g.yarn.x, to, t: 0 };
@@ -542,11 +616,25 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         }
       }
     };
+    const onAction = (e: Event) => {
+      if (!g) return;
+      const action = (e.currentTarget as HTMLElement).dataset.gardenAction;
+      if (action === "pet") pet();
+      if (action === "pumpkin") pumpkin();
+      if (action === "ghost") {
+        if (night) ghost(Math.round(g.l.w * 0.58), 28);
+        else g.fireflies = [...g.fireflies, { x: Math.round(g.l.w * 0.58), y: 28, phase: g.time }].slice(-MAX_FIREFLIES);
+      }
+      render();
+    };
+    const controls = wrap.querySelectorAll<HTMLButtonElement>("[data-garden-action]");
+    controls.forEach((button) => button.addEventListener("click", onAction));
     wrap.addEventListener("pointermove", onMove);
     wrap.addEventListener("pointerleave", onLeave);
     wrap.addEventListener("pointerdown", onDown);
     const cleanup = () => {
       resize.disconnect();
+      controls.forEach((button) => button.removeEventListener("click", onAction));
       wrap.removeEventListener("pointermove", onMove);
       wrap.removeEventListener("pointerleave", onLeave);
       wrap.removeEventListener("pointerdown", onDown);
@@ -567,19 +655,26 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       render();
       frame = requestAnimationFrame(loop);
     };
-    const seen = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !frame) frame = requestAnimationFrame(loop);
-      if (!entry.isIntersecting) {
+    let visible = false;
+    const resume = () => {
+      if (visible && !document.hidden && !frame) frame = requestAnimationFrame(loop);
+      if (!visible || document.hidden) {
         cancelAnimationFrame(frame);
         frame = 0;
         prev = 0;
       }
+    };
+    const seen = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      resume();
     });
+    document.addEventListener("visibilitychange", resume);
     seen.observe(canvas);
     canvas.dataset.state = "running";
     return () => {
       cancelAnimationFrame(frame);
       seen.disconnect();
+      document.removeEventListener("visibilitychange", resume);
       cleanup();
     };
   }, [theme, still, scene]);
@@ -593,6 +688,15 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         data-weather={scene}
         className="absolute top-0 left-0 [image-rendering:pixelated]"
       />
+      {scene === "halloween" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["pumpkin", "Toggle pumpkin lights"], ["ghost", "Summon a ghost"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "pumpkin" ? nightOf(theme) : undefined}>{action === "ghost" && theme === "light" ? "Add a firefly" : label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

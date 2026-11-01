@@ -79,6 +79,13 @@ export function BackgroundShader() {
   );
 }
 
+function subscribeFestival(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-festival"] });
+  return () => observer.disconnect();
+}
+const getFestival = () => document.documentElement.dataset.festival ?? null;
+
 /**
  * Top banner: 煤球's pixel garden under the sky of Hangzhou. A festival garden wins over the weather;
  * the theme saved in /admin shows only while there is no live weather. The switch in the soil cycles
@@ -88,8 +95,8 @@ export function BannerShader({ scene: saved = "clear" }: { scene?: SceneName }) 
   const mood = useShaderMood();
   const weather = useWeather();
   const [picked, setPicked] = useState<SceneName | null>(null);
+  const festival = useSyncExternalStore(subscribeFestival, getFestival, getServerSnapshot);
   if (!mood) return null;
-  const festival = document.documentElement.dataset.festival ?? null;
   const scene = bannerScene({ picked, festival, weather: weather?.kind ?? null, saved });
   return (
     <div className="shader-fade absolute inset-0">

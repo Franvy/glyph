@@ -21,6 +21,7 @@ export function sceneOfWeather(kind: WeatherKind): SceneName {
 const BY_FESTIVAL: Record<string, SceneName> = {
   "new-years-eve": "spring",
   "spring-festival": "spring",
+  halloween: "halloween",
 };
 
 /**

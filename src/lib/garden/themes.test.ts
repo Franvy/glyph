@@ -10,8 +10,8 @@ const at = (keys: (Key | null)[], x: number, y: number) => keys[y * l.w + x];
 const CLOUD = new Set<Key | null>(["cloud", "cloudLit", "cloudBelly", "deck", "deckLit", "deckBelly"]);
 
 describe("garden themes", () => {
-  it("cycles through all seven themes and back", () => {
-    expect(SCENES).toEqual(["clear", "cloudy", "rain", "storm", "snow", "fog", "spring"]);
+  it("cycles through all eight themes and back", () => {
+    expect(SCENES).toEqual(["clear", "cloudy", "rain", "storm", "snow", "fog", "spring", "halloween"]);
     let s: SceneName = SCENES[0];
     const seen = [];
     for (let i = 0; i < SCENES.length; i++) {

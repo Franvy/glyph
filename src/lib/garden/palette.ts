@@ -14,7 +14,8 @@ export type Key =
   | "cloud" | "cloudLit" | "cloudBelly" | "deck" | "deckLit" | "deckBelly" | "flash"
   | "drop" | "dropFar" | "puddle" | "puddleLit" | "bolt" | "boltEdge"
   | "flake" | "flakeArm" | "snow" | "snowShade" | "fog" | "fogThin"
-  | "red" | "redLit" | "redDark" | "gold" | "brass" | "spark" | "smoke";
+  | "red" | "redLit" | "redDark" | "gold" | "brass" | "spark" | "smoke"
+  | "pumpkin" | "pumpkinShade" | "candle" | "cutout" | "costume" | "ghost" | "web";
 
 export type Palette = Record<Key, string>;
 
@@ -33,6 +34,7 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     boltEdge: "#4a8fef", flake: "#c2beb5", flakeArm: "#6e6b65", snow: "#edeae3", snowShade: "#8f8b83", fog: "#262524",
     fogThin: "#1d1d1c", red: "#c8372a", redLit: "#f0603f", redDark: "#7a1f1a", gold: "#f0b941", brass: "#a8741e",
     spark: "#fff1c9", smoke: "#2b1613",
+    pumpkin: "#e99a45", pumpkinShade: "#92552e", candle: "#f6ca78", cutout: "#4c3629", costume: "#48434e", ghost: "#edeae3", web: "#edeae3",
   },
   light: {
     bg: "#fbfaf8", star: "#fbfaf8", star2: "#fbfaf8", star3: "#fbfaf8", moon: "#a9c6f4", moon2: "#d6e4fa", moonDark: "#fbfaf8",
@@ -48,5 +50,6 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     boltEdge: "#a9c6f4", flake: "#8db4f0", flakeArm: "#c9d9f3", snow: "#ffffff", snowShade: "#c9d9f3", fog: "#e9e7e2",
     fogThin: "#f1f0ec", red: "#e0412f", redLit: "#e0412f", redDark: "#a82a20", gold: "#e3a32a", brass: "#b97a14",
     spark: "#fff1c9", smoke: "#d4d1ca",
+    pumpkin: "#e99a45", pumpkinShade: "#92552e", candle: "#f6ca78", cutout: "#4c3629", costume: "#48434e", ghost: "#edeae3", web: "#8f8b83",
   },
 };

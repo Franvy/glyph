@@ -1,0 +1,130 @@
+[
+  {
+    "scene": "clear",
+    "number": "01",
+    "title": [
+      "Clear",
+      "sky."
+    ],
+    "caption": "A small garden. A whole day ahead.",
+    "theme": "light",
+    "accent": "#1f6fe0",
+    "label": "Clear",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "cloudy",
+    "number": "02",
+    "title": [
+      "Cloud",
+      "watching."
+    ],
+    "caption": "Nothing urgent. Just passing clouds.",
+    "theme": "light",
+    "accent": "#6a9ee9",
+    "label": "Cloudy",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "rain",
+    "number": "03",
+    "title": [
+      "Stay",
+      "a little."
+    ],
+    "caption": "Rain outside. A dry spot under the tree.",
+    "theme": "dark",
+    "accent": "#4a8fef",
+    "label": "Rain",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "storm",
+    "number": "04",
+    "title": [
+      "Thunder",
+      "rolls."
+    ],
+    "caption": "Two small eyes. Safely indoors.",
+    "theme": "dark",
+    "accent": "#8db4f0",
+    "label": "Storm",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "snow",
+    "number": "05",
+    "title": [
+      "First",
+      "snow."
+    ],
+    "caption": "New snow. The same little paw prints.",
+    "theme": "light",
+    "accent": "#1f6fe0",
+    "label": "Snow",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "fog",
+    "number": "06",
+    "title": [
+      "Slow",
+      "morning."
+    ],
+    "caption": "The garden takes its time to appear.",
+    "theme": "light",
+    "accent": "#8f8b83",
+    "label": "Fog",
+    "bg": "#fbfaf8",
+    "ink": "#1a1a19",
+    "dim": "#6e6b65",
+    "line": "#d4d1ca"
+  },
+  {
+    "scene": "spring",
+    "number": "07",
+    "title": [
+      "One more",
+      "firework."
+    ],
+    "caption": "No moon tonight. Meiqiu has fireworks.",
+    "theme": "dark",
+    "accent": "#f0603f",
+    "label": "Lunar New Year",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  },
+  {
+    "scene": "halloween",
+    "number": "08",
+    "title": [
+      "A little",
+      "spooky."
+    ],
+    "caption": "A borrowed hat. One shy visitor.",
+    "theme": "dark",
+    "accent": "#e99a45",
+    "label": "Halloween",
+    "bg": "#111111",
+    "ink": "#edeae3",
+    "dim": "#a7a39c",
+    "line": "#3a3936"
+  }
+]

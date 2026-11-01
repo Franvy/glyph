@@ -25,6 +25,7 @@ export const FESTIVALS = [
   { id: "new-year", name: "New Year's Day", rule: { solar: [1, 1] } },
   { id: "labour-day", name: "Labour Day", rule: { solar: [5, 1] } },
   { id: "national-day", name: "National Day", rule: { solar: [10, 1] } },
+  { id: "halloween", name: "Halloween", rule: { solar: [10, 31] } },
 ] as const satisfies readonly { id: string; name: string; rule: Rule }[];
 
 export type FestivalId = (typeof FESTIVALS)[number]["id"];
