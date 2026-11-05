@@ -9,6 +9,12 @@
     { "pattern": "franvy.cc", "custom_domain": true },
     { "pattern": "www.franvy.cc", "custom_domain": true }
   ],
+  // Workers Cache: Cloudflare consults it before running the Worker. What is stored is decided by
+  // the response headers, and Astro's cache provider (astro.config.mjs) only marks the home page
+  // cacheable. Keyed per deployed version by default, so a deploy never serves an old build.
+  "cache": { "enabled": true },
+  // Lets the cache provider tag responses with the deployed version.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"

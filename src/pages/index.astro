@@ -18,6 +18,7 @@ import ThemeToggle from "@/components/theme-toggle.astro";
 import { BannerShader } from "@/components/shaders";
 import Base from "@/layouts/base.astro";
 import { env } from "cloudflare:workers";
+import { HOME_CACHE_TAG } from "@/lib/cache-tags";
 import { duolingoLink, getContent, siteWith, socialsOf } from "@/lib/content";
 import { homeContributions } from "@/data/contributions";
 import { figureOf } from "@/data/figures";
@@ -30,8 +31,13 @@ import duolingoLogo from "@/assets/logos/duolingo.svg";
 import limnsCc from "@/assets/logos/limns-cc.svg";
 import limnsDev from "@/assets/logos/limns-dev.svg";
 
-// On demand: the content comes from D1, so an edit in /admin shows on the next load.
+// On demand: the content comes from D1. Cached at the edge (astro.config.mjs): a minute fresh,
+// then served stale for a day while one background render replaces it, so a first visit is
+// answered without running the Worker. A save in /admin purges the `home` tag everywhere
+// (src/pages/api/admin/content.ts), so an edit still shows on the next load. Nothing here reads
+// the request — no cookie, no header — which is what makes one copy right for every visitor.
 export const prerender = false;
+Astro.cache.set({ maxAge: 60, swr: 60 * 60 * 24, tags: [HOME_CACHE_TAG] });
 
 const content = await getContent(env.DB);
 const site = siteWith(content.profile);
