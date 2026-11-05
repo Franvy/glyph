@@ -1,5 +1,6 @@
 // @ts-check
 import cloudflare from "@astrojs/cloudflare";
+import { cacheCloudflare } from "@astrojs/cloudflare/cache";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
@@ -11,6 +12,12 @@ export default defineConfig({
   // Images are optimised by sharp at build time; no Images binding, no KV-backed sessions.
   adapter: cloudflare({ imageService: "compile" }),
   session: false,
+  // Route caching on Cloudflare's Workers Cache, which answers in front of the Worker:
+  // a hit never runs it, never reads D1, and is shared by every colo through the tiered
+  // cache. Only routes that call `Astro.cache.set()` are stored; the adapter marks every
+  // other response `Cloudflare-CDN-Cache-Control: no-store`, so the APIs and /admin stay
+  // live. See src/pages/index.astro and src/pages/api/admin/content.ts.
+  cache: { provider: cacheCloudflare() },
   integrations: [react(), sitemap({ filter: (page) => !new URL(page).pathname.startsWith("/admin") })],
   vite: {
     plugins: [tailwindcss()],
