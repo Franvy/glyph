@@ -1,8 +1,8 @@
 diff --git a/dist/assets/fonts/vite-plugin-fonts.js b/dist/assets/fonts/vite-plugin-fonts.js
-index cc23d3d84113577b32cd70f6d99a58154b98486c..e684538fd3bffb857a7ab8e2a4f86d09d406b1e7 100644
+index 97dd759ae08b80e47ff0688eda2cba0201c654a5..544a53a725f6bc1bbca39374b7878b9f94cc323f 100644
 --- a/dist/assets/fonts/vite-plugin-fonts.js
 +++ b/dist/assets/fonts/vite-plugin-fonts.js
-@@ -294,7 +294,12 @@ base: new URL(CACHE_DIR, isBuild ? settings.config.cacheDir : settings.dotAstroD
+@@ -295,7 +295,12 @@ base: new URL(CACHE_DIR, isBuild ? settings.config.cacheDir : settings.dotAstroD
  			if (built) {
  				return;
  			}

@@ -1,7 +1,7 @@
 // The footer cat's behaviour: one cat, one yarn ball, now and then a fish.
 // Plain DOM (appendChild: the Workers types shadow Element.append), one requestAnimationFrame loop that runs only while the footer is on screen.
 // Art and ball physics: src/lib/meiqiu.ts.
-import { BALL_R, POSES, PX, ballResting, spriteSvg, stepBall, type Ball, type Pose, type PoseName } from "@/lib/meiqiu";
+import { BALL_R, POSES, PX, ballResting, spriteSvg, stepBall, yarnPlayFrame, type Ball, type Pose, type PoseName } from "@/lib/meiqiu";
 
 export type MeiqiuParts = {
   area: HTMLElement; // where the pointer counts: the whole footer column
@@ -13,7 +13,7 @@ type Point = { x: number; y: number }; // y: height above the ground
 type Mode =
   | "sleep" | "twitch" | "wake" | "idle" | "move" | "skid" | "crouch" | "landed" | "pet"
   | "angry" | "flee" | "sulk" | "toFish" | "eat" | "full" | "nap" | "lie" | "jump" | "pat"
-  | "eye" | "chase" | "swat" | "bonk" | "carry";
+  | "eye" | "yarnPlay" | "chase" | "swat" | "bonk" | "carry";
 
 const cache = new Map<PoseName, ReturnType<typeof spriteSvg>>();
 const art = (name: PoseName) => {
@@ -176,7 +176,7 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
   // ---------- the yarn ball ----------
   const ballEl = add(make("button", "mq-prop mq-ball"));
   ballEl.type = "button";
-  ballEl.setAttribute("aria-label", "Yarn ball. Press Enter to throw it to Meiqiu");
+  ballEl.setAttribute("aria-label", "Play with the yarn ball");
   const ballSpr = make("span", "mq-spr");
   paint(ballSpr, "ball");
   ballSpr.dataset.n = "1"; // frames follow the roll, not the clock
@@ -190,6 +190,9 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
   const trail: [number, number][] = [];
   const ball: Ball = { x: Math.max(160, W - 48), y: 0, vx: 0, vy: 0, angle: 0 };
   let held = false;
+  let yarnAge: number | null = null;
+  let yarnSide = 1;
+  let yarnHome = 0;
   let carried = false;
   let restAt = 0;
   let energy = 0; // 1 after you throw; every swat of the cat spends some
@@ -276,7 +279,7 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
   }
 
   // ---------- input: the pointer ----------
-  let tapAt = -9, tapX = 0, downOnCat = false, drag: { samples: { x: number; y: number; t: number }[]; moved: number; start: Point } | null = null;
+  let tapAt = -9, tapX = 0, downOnCat = false, drag: { samples: { x: number; y: number; t: number }[]; moved: number; start: Point; pointerId: number } | null = null;
 
   on<PointerEvent>(area, "pointermove", (e) => {
     const p = local(e);
@@ -359,20 +362,18 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
 
   // ---------- input: the ball ----------
   on<PointerEvent>(ballEl, "pointerdown", (e) => {
+    if (e.button !== 0 || drag) return;
     e.preventDefault();
     ballEl.setPointerCapture(e.pointerId);
     const p = local(e);
-    drag = { samples: [{ x: p.x, y: p.y, t: e.timeStamp }], moved: 0, start: p };
+    drag = { samples: [{ x: p.x, y: p.y, t: e.timeStamp }], moved: 0, start: p, pointerId: e.pointerId };
     held = true;
     carried = false;
     poke();
-    if (asleep()) {
-      say("!", cat.x, top(), { loud: true });
-      set("eye");
-    }
+    if (asleep() || mode === "yarnPlay") set("eye");
   });
   on<PointerEvent>(ballEl, "pointermove", (e) => {
-    if (!drag) return;
+    if (drag?.pointerId !== e.pointerId) return;
     const p = local(e);
     drag.samples = drag.samples.filter((s) => e.timeStamp - s.t < 90).concat({ x: p.x, y: p.y, t: e.timeStamp });
     drag.moved = Math.max(drag.moved, Math.hypot(p.x - drag.start.x, p.y - drag.start.y));
@@ -380,22 +381,47 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
     ball.y = clamp(p.y - BALL_R, 0, H - 2 * BALL_R);
     ball.vx = ball.vy = 0;
   });
-  const release = () => {
-    if (!drag) return;
-    const s = drag.samples;
-    const a = s[0];
-    const b = s[s.length - 1];
-    const dt = Math.max(0.016, (b.t - a.t) / 1000);
-    if (drag.moved < 6) userThrow(rand(-160, 160), 520); // a tap: toss it up a little
-    else userThrow(clamp((b.x - a.x) / dt, -1800, 1800), clamp((b.y - a.y) / dt, -1800, 1800));
+  function playYarn() {
+    if (drag) return;
+    throwBall(0, 0);
+    ball.y = 0;
+    energy = 0;
+    cat.y = 0;
+    catEl.classList.remove("mq-shake");
+    jump = null;
+    P.target = null;
+    yarnAge = null;
+    yarnHome = ball.x;
+    yarnSide = yarnHome <= W / 2 ? -1 : 1;
+    // Leave room for the roll even when the ball starts against a wall.
+    yarnHome = clamp(yarnHome, BALL_R + 30, W - BALL_R - 30);
+    poke();
+    set("yarnPlay");
+  }
+
+  on<PointerEvent>(ballEl, "pointerup", (e) => {
+    if (drag?.pointerId !== e.pointerId) return;
+    const { samples, moved } = drag;
     drag = null;
+    if (moved < 6) {
+      playYarn();
+      return;
+    }
+    const a = samples[0];
+    const b = samples[samples.length - 1];
+    const dt = Math.max(0.016, (b.t - a.t) / 1000);
+    userThrow(clamp((b.x - a.x) / dt, -1800, 1800), clamp((b.y - a.y) / dt, -1800, 1800));
+  });
+  const cancelDrag = (e: PointerEvent) => {
+    if (drag?.pointerId !== e.pointerId) return;
+    drag = null;
+    throwBall(0, 0);
+    set("idle");
   };
-  on(ballEl, "pointerup", release);
-  on(ballEl, "pointercancel", release);
-  on<KeyboardEvent>(ballEl, "keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    e.preventDefault();
-    userThrow(Math.sign(cat.x - ball.x || 1) * rand(250, 420), rand(650, 800));
+  on<PointerEvent>(ballEl, "pointercancel", cancelDrag);
+  on<PointerEvent>(ballEl, "lostpointercapture", cancelDrag);
+  on<MouseEvent>(ballEl, "click", (e) => {
+    if (e.detail === 0) playYarn();
   });
 
   // ---------- behaviour ----------
@@ -445,7 +471,7 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
         } else fish.landed = true;
       }
     }
-    if (held || carried) return;
+    if (held || carried || mode === "yarnPlay") return;
     const hit = stepBall(ball, dt, W, H);
     if (hit.wall) {
       say("thud", ball.x < W / 2 ? 14 : W - 14, ball.y + 10, { loud: true });
@@ -711,6 +737,33 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
           lastPat = now;
           set("swat");
         }
+        break;
+      }
+
+      case "yarnPlay": {
+        const home = clamp(yarnHome, BALL_R, W - BALL_R);
+        const stand = clamp(home - yarnSide * 29, cat.w / 2, W - cat.w / 2);
+        const face = yarnSide > 0 ? "right" : "left";
+        if (yarnAge === null && Math.abs(stand - cat.x) >= 3 && !reduce) {
+          ball.x = home;
+          glide(stand, 175, dt);
+          pose("walk", stand > cat.x ? "right" : "left");
+          verb("going to the yarn ball");
+          break;
+        }
+        cat.x = stand;
+        yarnAge = (yarnAge ?? 0) + dt;
+        const frame = yarnPlayFrame(yarnAge);
+        if (!frame) {
+          ball.x = home;
+          set("idle");
+          break;
+        }
+        const x = clamp(home + yarnSide * 30 * (reduce ? 0 : frame.roll), BALL_R, W - BALL_R);
+        ball.angle += (x - ball.x) / BALL_R;
+        ball.x = x;
+        pose(reduce ? "yarnReach" : frame.pose, face);
+        verb("playing with the yarn ball");
         break;
       }
 

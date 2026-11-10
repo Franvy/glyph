@@ -243,23 +243,6 @@ export function AdminEditor({ initial }: { initial: SiteContent }) {
         <Label text="X">
           <input className={field} type="url" value={profile.x} onChange={(e) => setProfile({ x: e.target.value })} />
         </Label>
-        {/* The field keeps the typed text. The server turns it into a whole number (optionalCount in src/lib/content.ts). */}
-        <Label text="X following (shown on the Twitter hover card, empty hides it)">
-          <input
-            className={field}
-            inputMode="numeric"
-            value={profile.xFollowing ?? ""}
-            onChange={(e) => setProfile({ xFollowing: e.target.value as unknown as number })}
-          />
-        </Label>
-        <Label text="X followers (shown on the Twitter hover card, empty hides it)">
-          <input
-            className={field}
-            inputMode="numeric"
-            value={profile.xFollowers ?? ""}
-            onChange={(e) => setProfile({ xFollowers: e.target.value as unknown as number })}
-          />
-        </Label>
         <Label text="Duolingo username (the streak comes from Duolingo, empty hides the mark in the intro)">
           <input
             className={field}

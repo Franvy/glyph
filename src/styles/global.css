@@ -405,11 +405,25 @@ body {
   animation-delay: calc(var(--intro-wait) + var(--i, 0) * var(--reveal-step));
 }
 
-/* ---------- who: the avatar is grey ---------- */
+/* ---------- who: avatar spotlight ---------- */
 
 .avatar {
   filter: grayscale(100%);
   opacity: 0.9;
+}
+
+.avatar-spotlight {
+  pointer-events: none;
+  visibility: hidden;
+  mask-image: radial-gradient(
+    circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+    black 12px,
+    transparent 22px
+  );
+}
+
+[data-spotlight] > .avatar-spotlight {
+  visibility: visible;
 }
 
 /* ---------- projects, chips, skills ---------- */
@@ -667,7 +681,7 @@ body {
 }
 .mq-thread path {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--blush);
   stroke-width: 2;
   stroke-opacity: 0.55;
 }
@@ -780,29 +794,6 @@ body {
   }
 }
 
-/* ---------- hover cards (Paper: Hover cards · spec) ---------- */
-
-/* Above the bands that come after it, so a card can hang over the next section. */
-#about {
-  position: relative;
-  z-index: 1;
-}
-
-.hovercard {
-  opacity: 0;
-  /* `translate` places the card; `transform` does the 4px rise, so the two do not fight. */
-  transform: translateY(4px);
-  transition:
-    opacity 0.1s ease,
-    transform 0.1s ease;
-}
-.hovercard[data-open] {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity 0.16s var(--ease-out),
-    transform 0.16s var(--ease-out);
-}
 /* ---------- Duolingo streak: embers gather into a flame over the mark (streak.astro) ---------- */
 
 /* No card: the flame and the count, with their boxes trimmed to their ink, so centring them centres what is seen. */
@@ -881,10 +872,6 @@ body {
   pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .hovercard,
-  .hovercard[data-open] {
-    transform: none;
-  }
   .mark-icon {
     transition: none;
   }

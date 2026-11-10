@@ -49,6 +49,14 @@ function expand(source: Partial<Record<Key, string>>): Pixel[] {
   return out;
 }
 
+// From the 32 × 24 Paper rain frames. Align the body to the garden cat's first column.
+export const RAIN_UMBRELLA = expand({
+  umbrellaGold: "2,9,9|3,6,15|4,6,15|5,4,19|6,4,19|7,4,19",
+  umbrellaHandle: "1,13,1|" + Array.from({ length: 11 }, (_, i) => `${8 + i},13,1`).join("|") + "|19,11,3",
+  umbrellaLight: "3,13,1|4,13,1|5,13,1|6,13,1",
+  umbrellaShade: "7,6,2|7,11,2|7,17,2",
+});
+
 export const POSES = Object.fromEntries(
   Object.entries(SOURCE).map(([pose, source]) => [pose, expand(source)]),
 ) as Record<Pose, Pixel[]>;

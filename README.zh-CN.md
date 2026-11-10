@@ -43,7 +43,7 @@ pnpm dev                # http://localhost:4321
 填上 `GITHUB_TOKEN`（贡献日历）和 `CAIYUN_TOKEN`（天气）。
 
 提 PR 之前，先跑一遍 `pnpm check && pnpm test && pnpm e2e`。
-代码、数据库和测试的规范都写在 [`CLAUDE.md`](CLAUDE.md) 里。
+代码、数据库和测试的规范都写在 [`AGENTS.md`](AGENTS.md) 里。
 
 ## 部署你自己的版本
 

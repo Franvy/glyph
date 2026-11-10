@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import { CANDY, decorations, ghostFrame, HAT_TOP, pumpkinBoxes, summonGhost, WITCH_HAT, type Ghost } from "@/lib/garden/halloween";
 import { burstSound, dropSound, lampSound, petSound, popSound, skySound, yarnSound } from "@/components/garden-sound";
-import { type Cat, newCat, poseOf, step } from "@/lib/garden/meiqiu";
+import { type Cat, newCat, poseOf, rainWalk, step } from "@/lib/garden/meiqiu";
 import { tonightsPhase } from "@/lib/garden/moon";
 import { type Key, PALETTES } from "@/lib/garden/palette";
 import { type Layout, CELL, gridSize, layout, paintStatic, PEAK, windows } from "@/lib/garden/scene";
 import { panAt, petCue, skyCue } from "@/lib/garden/sounds";
-import { BUTTERFLY, FEET, HEART, POSES, type Pixel, type Pose, ZED_BIG, ZED_SMALL } from "@/lib/garden/sprites";
+import { BUTTERFLY, FEET, HEART, POSES, RAIN_UMBRELLA, type Pixel, type Pose, ZED_BIG, ZED_SMALL } from "@/lib/garden/sprites";
+import { gardenRituals, RITUAL_HEIGHT, RITUAL_WIDTH, ritualArt, ritualFrame, type GardenRitual } from "@/lib/meiqiu-rituals";
 import {
   BURST_FOR,
   burst,
@@ -78,6 +79,37 @@ interface Puff {
   smoke: boolean;
 }
 
+type GardenActivity = { id: GardenRitual; image: HTMLImageElement; at: number; frame: number };
+
+const FOOTING: Record<GardenRitual, { bodyX: number; groundY: number }> = {
+  hike: { bodyX: 11, groundY: 20 },
+  water: { bodyX: 5, groundY: 22 },
+  fish: { bodyX: 5, groundY: 21 },
+  nap: { bodyX: 8, groundY: 21 },
+  kite: { bodyX: 8, groundY: 21 },
+  stars: { bodyX: 8, groundY: 21 },
+  snow: { bodyX: 8, groundY: 21 },
+};
+
+function drawActivity(ctx: CanvasRenderingContext2D, activity: GardenActivity, cat: Cat, l: Layout) {
+  const { id, image, frame } = activity;
+  const { bodyX, groundY } = FOOTING[id];
+  const flip = id === "hike" && cat.dir === 1;
+  const anchor = flip ? RITUAL_WIDTH - bodyX - 12 : bodyX;
+  const x = Math.round(cat.x) + 1 - anchor;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (id === "stars") {
+    // The second strip keeps the stars and meteor in the existing sky, clear of the cat.
+    const skyX = Math.round(l.w * 0.48) - RITUAL_WIDTH / 2;
+    ctx.drawImage(image, frame * RITUAL_WIDTH, RITUAL_HEIGHT, RITUAL_WIDTH, RITUAL_HEIGHT, skyX, 6, RITUAL_WIDTH, RITUAL_HEIGHT);
+  }
+  ctx.translate(x + (flip ? RITUAL_WIDTH : 0), l.ground - groundY);
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(image, frame * RITUAL_WIDTH, 0, RITUAL_WIDTH, RITUAL_HEIGHT, 0, 0, RITUAL_WIDTH, RITUAL_HEIGHT);
+  ctx.restore();
+}
+
 /** Everything the loop mutates. Kept out of React state: it changes 60 times a second. */
 interface Garden {
   l: Layout;
@@ -85,6 +117,11 @@ interface Garden {
   bg: HTMLCanvasElement;
   flashBg: HTMLCanvasElement | null;
   cat: Cat;
+  rainWalkAt: number | null;
+  rainWalkDone: boolean;
+  activity: GardenActivity | null;
+  seenActivities: Set<GardenRitual>;
+  nextActivityAt: number;
   yarn: Yarn;
   fireflies: Firefly[];
   hearts: Heart[];
@@ -241,7 +278,8 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
 
   const lift = cat.mode === "sleep" ? 2 : 0;
   const oy = G - FEET[pose] - lift;
-  if (scene !== "storm") {
+  if (g.activity) drawActivity(ctx, g.activity, cat, l);
+  else if (scene !== "storm") {
     if (cat.mode === "sleep") {
       const cx = Math.round(cat.x);
       ctx.fillStyle = palette.pink;
@@ -250,7 +288,24 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
       ctx.fillStyle = palette.cushion;
       ctx.fillRect(cx, G - 1, 17, 1);
     }
+    const walk = !still && scene === "rain" && g.rainWalkAt !== null
+      ? rainWalk(time - g.rainWalkAt, Math.max(l.spots.minX, sceneSpots(l, scene).minX), l.spots.minX, l.spots.maxX)
+      : null;
+    if (walk) {
+      const x = Math.round(walk.puddleX);
+      ctx.fillStyle = palette.puddle;
+      ctx.fillRect(x - 7, G, 15, 2);
+      ctx.fillStyle = palette.puddleLit;
+      ctx.fillRect(x - 4, G, 8, 1);
+      if (walk.splash) {
+        for (const dx of [-8, -6, 6, 8]) put(x + dx, G - (Math.abs(dx) === 8 ? 2 : 4), "drop");
+        put(x + 8, G - 3, "gold");
+        put(x + 9, G - 3, "brass");
+        for (let dx = 5; dx < 10; dx++) put(x + dx, G - 2, "gold");
+      }
+    }
     sprite(POSES[pose], Math.round(cat.x), oy, cat.dir === 1);
+    if (walk) sprite(RAIN_UMBRELLA, Math.round(cat.x), G - 21, cat.dir === 1);
     if (scene === "spring") {
       // A red scarf with a gold bell.
       const r = SCARF_ROW[pose];
@@ -336,7 +391,12 @@ function dither(ctx: CanvasRenderingContext2D, from: ImageData, step: number) {
 }
 
 /** 煤球's garden: a pixel scene in the site's blues that 煤球 wanders around, in one of eight themes. */
-export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; still: boolean; scene?: SceneName }) {
+export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
+  theme: Theme;
+  still: boolean;
+  scene?: SceneName;
+  windy?: boolean;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Survives a theme or scene switch, so 煤球 keeps walking where it was.
@@ -348,11 +408,19 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
     let g: Garden | null = gardenRef.current;
     const night = nightOf(theme);
+    const activities = still ? [] : gardenRituals(scene, night, windy);
+    const activityImages = new Map(activities.map((id) => {
+      const image = new Image();
+      image.src = ritualArt(id);
+      return [id, image];
+    }));
 
     const build = () => {
       const { w, h } = gridSize(wrap.clientWidth, wrap.clientHeight);
       if (!w || !h) return;
       const l = layout(w, h);
+      const sameScene = g?.scene === scene ? g : null;
+      const sameWidth = sameScene?.l.w === w ? sameScene : null;
       const fade =
         g && g.scene !== scene && !still && canvas.width === w && canvas.height === h
           ? { from: ctx.getImageData(0, 0, w, h), age: 0 }
@@ -368,9 +436,14 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         bg: paintBackground(l, theme, scene),
         flashBg: scene === "storm" ? paintBackground(l, theme, scene, true) : null,
         cat: still ? { ...newCat(startX), mode: "sleep", timer: Infinity } : (g?.cat ?? newCat(startX)),
+        rainWalkAt: still ? null : (sameWidth?.rainWalkAt ?? null),
+        rainWalkDone: sameScene?.rainWalkDone ?? false,
+        activity: sameWidth?.activity && activities.includes(sameWidth.activity.id) ? sameWidth.activity : null,
+        seenActivities: sameScene?.seenActivities ?? new Set(),
+        nextActivityAt: sameScene?.nextActivityAt ?? (g?.time ?? 0) + 1.5,
         yarn: g?.yarn ?? { x: l.bowl - 34, from: l.bowl - 34, to: l.bowl - 34, t: 1 },
         fireflies:
-          (scene === "halloween" && !night ? [] : g?.fireflies) ??
+          (scene === "halloween" && !night ? [] : sameScene?.fireflies) ??
           [0.27, 0.68, 0.16, 0.45, 0.94].map((fx, i) => ({ x: Math.round(w * fx), y: l.ground - [23, 25, 29, 41, 43][i], phase: i * 1.7 })),
         hearts: [],
         sway: new Map(),
@@ -380,17 +453,17 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
         pounce: null,
         pets: g?.pets ?? 0,
         time: g?.time ?? 0,
-        // The paw prints and the red paper stay until reload, but only in their own scene.
-        prints: g?.l.w === w ? g.prints : [],
-        lastPrint: g?.lastPrint ?? -1,
+        // Keep ground marks when redrawing the same scene at the same width.
+        prints: sameWidth?.prints ?? [],
+        lastPrint: sameWidth?.lastPrint ?? -1,
         fireworks: [],
         trails: [],
         nextLaunch: (g?.time ?? 0) + 1.5,
-        popped: g?.popped ?? 0,
+        popped: sameScene?.popped ?? 0,
         nextPop: null,
         puffs: [],
-        bits: g?.l.w === w ? g.bits.filter((b) => b.key !== "drop") : [],
-        fade: fade ?? g?.fade ?? null,
+        bits: sameWidth?.bits.filter((b) => b.key !== "drop") ?? [],
+        fade: still ? null : (fade ?? sameScene?.fade ?? null),
         pumpkinLit: night,
         ghost: null,
         lastTreat: -Infinity,
@@ -423,6 +496,13 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       wrap.querySelector('[data-garden-action="pumpkin"]')?.setAttribute("aria-pressed", String(g.pumpkinLit));
       canvas.dataset.catX = String(Math.round((g.cat.x + 8) * CELL));
       canvas.dataset.catY = String(Math.round((g.l.ground - 6) * CELL));
+      if (g.activity) {
+        canvas.dataset.activity = g.activity.id;
+        canvas.dataset.activityFrame = String(g.activity.frame);
+      } else {
+        delete canvas.dataset.activity;
+        delete canvas.dataset.activityFrame;
+      }
       canvas.dataset.catMode = scene === "storm" ? "hidden" : cat.mode;
     };
 
@@ -432,6 +512,37 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       const colors: Firework["color"][] = ["red", "gold", "g4"];
       g.trails.push({ x: Math.round(x), y: g.l.ground - 2, toY: Math.round(toY), color: colors[Math.floor(Math.random() * 3)], heard });
       return true;
+    };
+
+    const updateActivity = (g: Garden, dt: number, interrupted: boolean) => {
+      if (g.activity) {
+        const frame = ritualFrame(g.activity.id, g.time - g.activity.at);
+        if (interrupted || frame === null) {
+          g.activity = null;
+          g.nextActivityAt = g.time + 6;
+          g.cat = { ...g.cat, mode: "sit", timer: 1.5 };
+        } else {
+          g.activity.frame = frame;
+          if (g.activity.id === "hike") {
+            const { minX, maxX } = g.l.spots;
+            const x = Math.max(minX, Math.min(maxX, g.cat.x + g.cat.dir * 7 * dt));
+            g.cat = { ...g.cat, x };
+          }
+        }
+      }
+      if (interrupted || g.activity || g.time < g.nextActivityAt || g.cat.mode !== "sit" || g.cat.goal === "yarn") return;
+      const id = activities.find((id) => {
+        const image = activityImages.get(id);
+        return !g.seenActivities.has(id) && !!image?.naturalWidth;
+      });
+      if (!id) return;
+      const image = activityImages.get(id)!;
+      g.activity = { id, image, at: g.time, frame: 0 };
+      g.seenActivities.add(id);
+      if (id === "hike") {
+        const { minX, maxX } = g.l.spots;
+        g.cat = { ...g.cat, dir: maxX - g.cat.x > g.cat.x - minX ? 1 : -1 };
+      }
     };
 
     const tick = (dt: number) => {
@@ -449,25 +560,38 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       g.overHouse = hit.house;
       l.spots.butterfly = Math.round(w / 2 + Math.sin(g.time * 0.4) * w * 0.3);
 
-      // Rain: 煤球 walks to the tree and waits there.
+      // In rain, take one short walk after reaching shelter. A pet or yarn throw interrupts it.
       const rainy = scene === "rain" || scene === "storm";
-      const home = sceneSpots(l, scene);
-      let spots = l.spots;
-      if (rainy) {
-        const near = Math.abs(g.cat.x - home.minX) < 1;
-        if (near && g.cat.goal !== "yarn") spots = { ...home, butterfly: l.spots.butterfly };
-        else if (!near && g.cat.goal !== "yarn" && (g.cat.mode === "sit" || g.cat.mode === "sleep" || g.cat.target !== home.minX)) {
-          if (g.cat.mode !== "happy" && g.cat.mode !== "alert" && g.cat.mode !== "chase") {
-            g.cat = { ...g.cat, mode: "walk", goal: "wander", target: home.minX };
-          }
-        }
+      const shelterX = Math.max(l.spots.minX, sceneSpots(l, scene).minX);
+      const sheltered = rainy && Math.abs(g.cat.x - shelterX) < 1 && g.cat.goal !== "yarn";
+      const hoverCat = hit.cat || g.time < g.petUntil;
+      updateActivity(g, dt, hoverCat || hit.house || g.pounce !== null);
+      if (scene === "rain" && sheltered && g.cat.mode === "sit" && !hoverCat && g.pounce === null && !g.rainWalkDone) {
+        g.rainWalkAt = g.time;
+        g.rainWalkDone = true;
       }
-      g.cat = step(
-        g.cat,
-        dt,
-        { hoverCat: hit.cat || g.time < g.petUntil, hoverHouse: hit.house && !rainy, pounce: g.pounce, spots },
-        Math.random,
-      );
+      const walk = g.rainWalkAt !== null && !hoverCat && g.pounce === null
+        ? rainWalk(g.time - g.rainWalkAt, shelterX, l.spots.minX, l.spots.maxX)
+        : null;
+      if (walk) {
+        g.cat = {
+          ...g.cat,
+          x: walk.x,
+          dir: walk.dir,
+          mode: walk.paused ? "sit" : "walk",
+          target: shelterX,
+          clock: g.cat.clock + dt,
+        };
+      } else if (!g.activity) {
+        g.rainWalkAt = null;
+        if (rainy && g.cat.goal === "yarn" && g.cat.mode === "sit") g.cat = { ...g.cat, goal: "wander" };
+        const spots = sheltered && g.pounce === null ? { ...l.spots, minX: shelterX, maxX: shelterX } : l.spots;
+        if (rainy && !sheltered && g.cat.goal !== "yarn" &&
+          (g.cat.mode === "sit" || g.cat.mode === "sleep" || (g.cat.mode === "walk" && g.cat.target !== shelterX))) {
+          g.cat = { ...g.cat, mode: "walk", goal: "wander", target: shelterX };
+        }
+        g.cat = step(g.cat, dt, { hoverCat, hoverHouse: hit.house && !rainy, pounce: g.pounce, spots }, Math.random);
+      }
       g.pounce = null;
 
       if (scene === "snow" && (g.cat.mode === "walk" || g.cat.mode === "chase")) {
@@ -677,7 +801,7 @@ export function GardenBanner({ theme, still, scene = "clear" }: { theme: Theme; 
       document.removeEventListener("visibilitychange", resume);
       cleanup();
     };
-  }, [theme, still, scene]);
+  }, [theme, still, scene, windy]);
 
   return (
     <div ref={wrapRef} className="absolute inset-0 overflow-hidden">

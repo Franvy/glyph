@@ -3,5 +3,5 @@ allowBuilds:
   sharp: true
   workerd: true
 patchedDependencies:
-  astro@7.4.1: patches/astro@7.4.1.patch
+  astro@7.4.8: patches/astro@7.4.8.patch
   cuelume@0.2.8: patches/cuelume@0.2.8.patch
