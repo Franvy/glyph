@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BALL_R, PX, POSES, ballResting, spriteSvg, stepBall, type Ball } from "./meiqiu";
+import { BALL_R, PX, POSES, ballResting, spriteSvg, stepBall, yarnPlayFrame, type Ball } from "./meiqiu";
 
 const ART = /^[.#epfkaAhw]+$/;
 
@@ -132,5 +132,16 @@ describe("the yarn ball", () => {
     const b = ball({ vx: 120 });
     stepBall(b, 1 / 60, 600, 120);
     expect(b.angle).toBeGreaterThan(0);
+  });
+});
+
+describe("yarn play", () => {
+  it("pauses to look, reaches, then rolls the ball out and back", () => {
+    expect(yarnPlayFrame(0)).toEqual({ pose: "sitL", roll: 0 });
+    expect(yarnPlayFrame(0.5)).toEqual({ pose: "yarnReach", roll: 0 });
+    expect(yarnPlayFrame(0.8)).toMatchObject({ pose: "swat" });
+    expect(yarnPlayFrame(1.2)?.roll).toBeCloseTo(1);
+    expect(yarnPlayFrame(1.85)?.roll).toBeCloseTo(0);
+    expect(yarnPlayFrame(2)).toBeNull();
   });
 });

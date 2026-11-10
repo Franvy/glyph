@@ -13,14 +13,23 @@ export type Key =
   | "cat" | "eye" | "zz" | "heart"
   | "cloud" | "cloudLit" | "cloudBelly" | "deck" | "deckLit" | "deckBelly" | "flash"
   | "drop" | "dropFar" | "puddle" | "puddleLit" | "bolt" | "boltEdge"
+  | "umbrellaGold" | "umbrellaLight" | "umbrellaShade" | "umbrellaHandle"
   | "flake" | "flakeArm" | "snow" | "snowShade" | "fog" | "fogThin"
   | "red" | "redLit" | "redDark" | "gold" | "brass" | "spark" | "smoke"
   | "pumpkin" | "pumpkinShade" | "candle" | "cutout" | "costume" | "ghost" | "web";
 
 export type Palette = Record<Key, string>;
 
+const UMBRELLA = {
+  umbrellaGold: "#E7BE68",
+  umbrellaLight: "#F6DA99",
+  umbrellaShade: "#D2A657",
+  umbrellaHandle: "#B28D6E",
+};
+
 export const PALETTES: Record<"dark" | "light", Palette> = {
   dark: {
+    ...UMBRELLA,
     bg: "#111111", star: "#2a2927", star2: "#6e6b65", star3: "#c2beb5", moon: "#edeae3", moon2: "#c2beb5", moonDark: "#1f1f1e",
     hill: "#141a24", soil: "#161615", soil2: "#1c1c1b", soilTop: "#2a2927", pebble: "#2a2927",
     g1: "#1c2b44", g2: "#24467a", g3: "#3466b0", g4: "#4a8fef",
@@ -37,6 +46,7 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     pumpkin: "#e99a45", pumpkinShade: "#92552e", candle: "#f6ca78", cutout: "#4c3629", costume: "#48434e", ghost: "#edeae3", web: "#edeae3",
   },
   light: {
+    ...UMBRELLA,
     bg: "#fbfaf8", star: "#fbfaf8", star2: "#fbfaf8", star3: "#fbfaf8", moon: "#a9c6f4", moon2: "#d6e4fa", moonDark: "#fbfaf8",
     hill: "#e3ecfa", soil: "#f2f1ee", soil2: "#ecebe7", soilTop: "#d4d1ca", pebble: "#d4d1ca",
     g1: "#a9c6f4", g2: "#6a9ee9", g3: "#3d82e6", g4: "#1f6fe0",

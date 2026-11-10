@@ -13,8 +13,8 @@ const FILL: Record<string, string> = {
   h: "var(--heart)",
   f: "var(--fish)",
   k: "var(--mute)",
-  a: "var(--accent)",
-  A: "var(--accent-2)",
+  a: "var(--blush)",
+  A: "color-mix(in srgb, var(--blush), #8f4058 32%)",
   w: "var(--mute)",
 };
 
@@ -52,6 +52,7 @@ const YAWN = rows(CLOSED, { 6: ".#pp##pp##pp#.#.", 7: ".#####pp#####.#." });
 const LICK = rows(CLOSED, { 7: ".######p#####.#." });
 // head down to the bowl: everything but the legs drops one row
 const EAT_DOWN = ["................", ...CLOSED.slice(0, 9), LEGS];
+const YARN_REACH = rows(SIT_L, { 8: "###############." });
 const SWAT = rows(SIT, { 7: "#############.#.", 8: "###############.", 10: "..........##...." });
 
 // In profile, facing left, for moving: built like the crouch (Paper: 03 · 扑) — two rows of
@@ -192,6 +193,7 @@ export const POSES = {
   eat: { frames: [CLOSED, EAT_DOWN], face: "left", dur: 0.36 },
   crouch: { frames: [CROUCH_A, CROUCH_B], face: "left", dur: 0.16 },
   pounce: { frames: [POUNCE], face: "left" },
+  yarnReach: { frames: [YARN_REACH], face: "left" },
   swat: { frames: [SIT, SWAT], face: "left", dur: 0.16 },
   reach: { frames: [REACH], face: "left" },
   stretch: { frames: [STRETCH_A, STRETCH_B], face: "left", dur: 0.5 },
@@ -278,4 +280,15 @@ export function stepBall(b: Ball, dt: number, w: number, h: number): { wall?: nu
 /** On the ground and all but still. */
 export function ballResting(b: Ball) {
   return b.y === 0 && b.vy === 0 && Math.abs(b.vx) < 12;
+}
+
+/** The tap sequence, with the roll measured as a fraction of the distance out. */
+export function yarnPlayFrame(age: number): { pose: PoseName; roll: number } | null {
+  if (age < 0.4) return { pose: "sitL", roll: 0 };
+  if (age < 0.7) return { pose: "yarnReach", roll: 0 };
+  if (age < 1.85) {
+    const roll = Math.max(0, Math.min((age - 0.7) / 0.5, (1.85 - age) / 0.65));
+    return { pose: age < 1 ? "swat" : "sitL", roll: 1 - (1 - roll) ** 2 };
+  }
+  return age < 2 ? { pose: "sit", roll: 0 } : null;
 }

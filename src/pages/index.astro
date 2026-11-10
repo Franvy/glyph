@@ -6,7 +6,6 @@ import Band from "@/components/band.astro";
 import BrandIcon from "@/components/brand-icon.astro";
 import { HostClock } from "@/components/clock";
 import Contributions from "@/components/contributions.astro";
-import HoverCards from "@/components/hover-cards.astro";
 import Mark from "@/components/mark.astro";
 import { Meiqiu } from "@/components/meiqiu";
 import { ProjectCard } from "@/components/project-card";
@@ -23,7 +22,6 @@ import { duolingoLink, getContent, siteWith, socialsOf } from "@/lib/content";
 import { homeContributions } from "@/data/contributions";
 import { figureOf } from "@/data/figures";
 import { homeDuolingo } from "@/data/duolingo";
-import { homeGitHub } from "@/data/github-profile";
 // Pre-sized from avatar.png (360px): this page renders on demand, where the Cloudflare adapter's "compile" image
 // service only passes files through, so <Image /> cannot resize here.
 import avatar from "@/assets/images/avatar-160.webp";
@@ -43,9 +41,7 @@ const content = await getContent(env.DB);
 const site = siteWith(content.profile);
 const socials = socialsOf(content.profile);
 const { projects, skills } = content;
-const [contributions, gh, duo] = await Promise.all([homeContributions(), homeGitHub(), homeDuolingo(site.duolingo)]);
-// The intro names two projects. The GitHub card lists the ones still on the list in /admin.
-const intro = ["limns.cc", "limns.dev"].filter((name) => projects.some((p) => p.name === name));
+const [contributions, duo] = await Promise.all([homeContributions(), homeDuolingo(site.duolingo)]);
 const duolingoHref = site.duolingo ? duolingoLink(site.duolingo) : null;
 ---
 
@@ -67,8 +63,9 @@ const duolingoHref = site.duolingo ? duolingoLink(site.duolingo) : null;
       <div class="flex justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="shrink-0 rounded-lg border-[1.5px] border-frame p-[3px]">
-            <div class="size-20 overflow-clip rounded-[5px] bg-[#18181b]">
+            <div data-avatar-frame class="relative size-20 overflow-clip rounded-[5px] bg-[#18181b]">
               <Image src={avatar} alt="A hand-painted Pikachu in the grass" width={160} height={160} class="avatar size-full object-cover" />
+              <Image src={avatar} alt="" width={160} height={160} class="avatar-spotlight absolute inset-0 size-full object-cover" />
             </div>
           </div>
           <div class="flex flex-col justify-center self-end">
@@ -146,7 +143,7 @@ const duolingoHref = site.duolingo ? duolingoLink(site.duolingo) : null;
           {
             socials.map((s) => (
               <li>
-                <a href={s.href} data-hovercard-for={s.icon} class="chip flex items-center gap-1.5 bg-card px-2 py-1 text-[13px] leading-5 text-body">
+                <a href={s.href} class="chip flex items-center gap-1.5 bg-card px-2 py-1 text-[13px] leading-5 text-body">
                   <BrandIcon name={s.icon} class="text-mute" />
                   {s.label}
                 </a>
@@ -160,16 +157,6 @@ const duolingoHref = site.duolingo ? duolingoLink(site.duolingo) : null;
         <Contributions year={contributions} />
       </div>
 
-      <HoverCards
-        name={site.name}
-        github={site.github}
-        x={site.x}
-        xFollowing={site.xFollowing}
-        xFollowers={site.xFollowers}
-        bio={`${site.headline} in ${site.city}. Code for ${intro.join(", ").replace(/, ([^,]*)$/, " and $1")}.`}
-        year={contributions}
-        gh={gh}
-      />
       {duo && <Streak streak={duo.streak} />}
     </Band>
 
@@ -208,3 +195,19 @@ const duolingoHref = site.duolingo ? duolingoLink(site.duolingo) : null;
     </div>
   </footer>
 </Base>
+
+<script>
+  const frame = document.querySelector<HTMLElement>("[data-avatar-frame]");
+
+  frame?.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch") return;
+
+    const bounds = frame.getBoundingClientRect();
+    frame.style.setProperty("--spotlight-x", `${event.clientX - bounds.left}px`);
+    frame.style.setProperty("--spotlight-y", `${event.clientY - bounds.top}px`);
+    frame.setAttribute("data-spotlight", "");
+  });
+
+  frame?.addEventListener("pointerleave", () => frame.removeAttribute("data-spotlight"));
+  frame?.addEventListener("pointercancel", () => frame.removeAttribute("data-spotlight"));
+</script>

@@ -70,3 +70,11 @@ test("on a phone the column sits inside a visible rail, with a 24px gutter", asy
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });
+
+test("profile social links have no hover cards", async ({ page }) => {
+  await page.goto("/");
+  const about = page.locator("#about");
+  await expect(about.getByRole("link", { name: "GitHub", exact: true })).toHaveAttribute("href", /^https:\/\/github\.com\//);
+  await expect(about.getByRole("link", { name: "Twitter", exact: true })).toHaveAttribute("href", /^https:\/\/x\.com\//);
+  await expect(about.locator("[data-hovercard-for], [data-hovercard]")).toHaveCount(0, { timeout: 1000 });
+});

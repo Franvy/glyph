@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Cat, type World, CHASE_SPEED, WALK_SPEED, newCat, poseOf, step } from "./meiqiu";
+import { type Cat, type World, CHASE_SPEED, WALK_SPEED, newCat, poseOf, rainWalk, step } from "./meiqiu";
 
 const world = (over: Partial<World> = {}): World => ({
   hoverCat: false,
@@ -92,5 +92,18 @@ describe("煤球", () => {
     const cat = { ...newCat(50), mode: "walk" as const, target: 150, goal: "wander" as const };
     const frames = new Set([0, 0.13, 0.26, 0.39].map((t) => poseOf(run(cat, t, world()), 0)));
     expect(frames).toEqual(new Set(["walk1", "walk2"]));
+  });
+});
+
+describe("rain walk", () => {
+  it("steps out, splashes, and returns to shelter", () => {
+    expect(rainWalk(0, 28, 0, 100)).toMatchObject({ x: 28, dir: 1, splash: false });
+    expect(rainWalk(1.2, 28, 0, 100)).toMatchObject({ x: 40, dir: 1, splash: true });
+    expect(rainWalk(2.2, 28, 0, 100)).toMatchObject({ dir: -1, splash: false });
+    expect(rainWalk(3, 28, 0, 100)).toBeNull();
+  });
+
+  it("walks inward when the shelter is at the right edge", () => {
+    expect(rainWalk(1.2, 100, 0, 100)).toMatchObject({ x: 88, dir: -1, splash: true });
   });
 });

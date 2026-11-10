@@ -43,7 +43,7 @@ The site runs without tokens. To get the live data, copy `.env.example` to `.dev
 `GITHUB_TOKEN` (contribution calendar) and `CAIYUN_TOKEN` (weather).
 
 Before you open a pull request, run `pnpm check && pnpm test && pnpm e2e`.
-[`CLAUDE.md`](CLAUDE.md) holds the code, database and test rules.
+[`AGENTS.md`](AGENTS.md) holds the code, database and test rules.
 
 ## Deploy your own
 

@@ -98,9 +98,10 @@ export function BannerShader({ scene: saved = "clear" }: { scene?: SceneName }) 
   const festival = useSyncExternalStore(subscribeFestival, getFestival, getServerSnapshot);
   if (!mood) return null;
   const scene = bannerScene({ picked, festival, weather: weather?.kind ?? null, saved });
+  const windy = !!weather && weather.windSpeed >= 12 && weather.windSpeed <= 30;
   return (
     <div className="shader-fade absolute inset-0">
-      <FitGarden theme={mood.theme} still={mood.still} scene={scene} />
+      <FitGarden theme={mood.theme} still={mood.still} scene={scene} windy={windy} />
       <button
         type="button"
         aria-label={`Banner theme: ${SCENE_LABELS[scene]}. Click for the next one (this page only)`}
@@ -127,7 +128,7 @@ const BANNER_H = 220;
  * The garden at the full banner height, scaled to fit the height of its box. At 220 px tall (desktop)
  * the scale is 1. A phone banner keeps the 666:220 shape, so the same garden is drawn smaller.
  */
-function FitGarden({ theme, still, scene }: { theme: "dark" | "light"; still: boolean; scene: SceneName }) {
+function FitGarden({ theme, still, scene, windy }: { theme: "dark" | "light"; still: boolean; scene: SceneName; windy?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; scale: number } | null>(null);
   useEffect(() => {
@@ -147,7 +148,7 @@ function FitGarden({ theme, still, scene }: { theme: "dark" | "light"; still: bo
           className="absolute top-0 left-0 origin-top-left"
           style={{ width: size.w, height: BANNER_H, transform: size.scale === 1 ? undefined : `scale(${size.scale})` }}
         >
-          <GardenBanner theme={theme} still={still} scene={scene} />
+          <GardenBanner theme={theme} still={still} scene={scene} windy={windy} />
         </div>
       )}
     </div>

@@ -127,3 +127,19 @@ export function poseOf(c: Cat, now: number): Pose {
       return c.mode;
   }
 }
+
+/** A short walk from shelter to a puddle and back. Distances are grid cells. */
+export function rainWalk(age: number, home: number, minX: number, maxX: number) {
+  if (age >= 3) return null;
+  const outward = maxX - home >= home - minX ? 1 : -1;
+  const distance = Math.min(12, outward === 1 ? maxX - home : home - minX);
+  const progress = Math.min(1, age / 1.2, (3 - age) / 1.2);
+  const dir: Cat["dir"] = age < 1.8 ? outward : outward === 1 ? -1 : 1;
+  return {
+    x: home + outward * distance * progress,
+    puddleX: home + outward * distance + 8,
+    dir,
+    paused: age >= 1.2 && age < 1.8,
+    splash: age >= 1.2 && age < 1.65,
+  };
+}

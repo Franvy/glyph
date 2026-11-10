@@ -18,6 +18,7 @@ playwright-report/
 
 # personal agent setup: kept on each machine, never committed
 .claude/
+.factory/
 CLAUDE.local.md
 skills-lock.json
 .agents/
