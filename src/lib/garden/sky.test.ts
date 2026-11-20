@@ -43,6 +43,13 @@ describe("bannerScene", () => {
     expect(bannerScene({ ...none, picked: "clear", festival: "halloween", weather: "rain" })).toBe("clear");
   });
 
+  it("shows the winter solar terms before the weather, and lets an explicit scene win", () => {
+    for (const term of ["minor-snow", "major-snow", "winter-solstice"] as const) {
+      expect(bannerScene({ ...none, festival: term, weather: "rain" })).toBe(term);
+      expect(bannerScene({ ...none, picked: "clear", festival: term, weather: "rain" })).toBe("clear");
+    }
+  });
+
   it("lets the test switch override everything", () => {
     expect(bannerScene({ picked: "snow", festival: "spring-festival", weather: "rain", saved: "clear" })).toBe("snow");
   });

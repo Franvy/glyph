@@ -1,5 +1,45 @@
 import { useEffect, useRef } from "react";
 import { CANDY, decorations, ghostFrame, HAT_TOP, pumpkinBoxes, summonGhost, WITCH_HAT, type Ghost } from "@/lib/garden/halloween";
+import {
+  bambooRackBox,
+  brazierBox,
+  BREATH_PUFF,
+  CAP_TOP,
+  EARMUFF_TOP,
+  eavesBox,
+  type FallingPersimmon,
+  type FallingPetal,
+  FLURRY_FOR,
+  ICICLE_GLINT_FOR,
+  isWinterTerm,
+  KNIT_CAP,
+  launchMeteor,
+  majorSnowDecor,
+  majorSnowFlakes,
+  MAX_SNOW_PRINTS,
+  METEOR_FOR,
+  minorSnowDecor,
+  minorSnowGraupel,
+  nextSnowCatStage,
+  openWintersweet,
+  PERSIMMON_CAKE_TOKEN,
+  persimmonBoughBox,
+  PLAID_SCARF,
+  PLAID_SCARF_ROW,
+  PLUSH_EARMUFFS,
+  potatoPotBox,
+  shakePersimmon,
+  SNOW_PRINT_FOR,
+  snowCatBox,
+  type SnowCatStage,
+  type SnowPrint,
+  type SolsticeMeteor,
+  SWEET_POTATO_TOKEN,
+  TANGYUAN_SPOON_TOKEN,
+  tangyuanBowlBox,
+  winterSolsticeDecor,
+  wintersweetBox,
+} from "@/lib/garden/winter-terms";
 import { burstSound, dropSound, lampSound, petSound, popSound, skySound, yarnSound } from "@/components/garden-sound";
 import { type Cat, newCat, poseOf, rainWalk, step } from "@/lib/garden/meiqiu";
 import { tonightsPhase } from "@/lib/garden/moon";
@@ -129,6 +169,7 @@ interface Garden {
   pointer: { x: number; y: number } | null;
   overCat: boolean;
   overHouse: boolean;
+  houseWarm: boolean;
   pounce: number | null;
   pets: number;
   time: number;
@@ -148,30 +189,84 @@ interface Garden {
   petUntil: number;
   blinkUntil: number;
   targetSize: number;
+  // Minor Snow
+  brazierFanned: boolean;
+  persimmonsDropped: number;
+  boughSwayUntil: number;
+  fallingPersimmons: FallingPersimmon[];
+  // Major Snow
+  snowCatStage: SnowCatStage;
+  snowPrints: SnowPrint[];
+  snowPrintParity: 0 | 1;
+  icicleGlintAt: number | null;
+  snowFlurryUntil: number;
+  snowPuffUntil: number;
+  // Winter Solstice
+  hearthStoked: boolean;
+  wintersweetBlooms: number;
+  meteor: SolsticeMeteor | null;
+  petals: FallingPetal[];
+  nextBreathAt: number;
+  breathUntil: number;
 }
 
 const nightOf = (theme: Theme) => theme === "dark";
 
-function hits(g: Garden) {
+function hits(g: Garden, night = false) {
   const p = g.pointer;
   const { l, cat } = g;
-  if (!p) return { cat: false, pumpkin: false, house: false, grass: false, sky: false, crackers: false };
+  if (!p) {
+    return {
+      cat: false,
+      pumpkin: false,
+      bough: false,
+      brazier: false,
+      rack: false,
+      snowCat: false,
+      eaves: false,
+      potatoPot: false,
+      wintersweet: false,
+      tangyuanBowl: false,
+      house: false,
+      grass: false,
+      sky: false,
+      crackers: false,
+    };
+  }
   const inside = (x: number, y: number, w: number, h: number) => {
     const px = Math.max(0, (g.targetSize - w) / 2);
     const py = Math.max(0, (g.targetSize - h) / 2);
     return p.x >= x - px && p.x <= x + w + px && p.y >= y - py && p.y <= y + h + py;
   };
+  const inBox = (b: { x: number; y: number; w: number; h: number }) => inside(b.x, b.y, b.w, b.h);
   const onCat = g.scene !== "storm" && inside(cat.x, l.ground - 14, 16, 14);
-  const onPumpkin = g.scene === "halloween" && !onCat && pumpkinBoxes(l).some((b) => inside(b.x, b.y, b.w, b.h));
-  const onHouse = !onCat && !onPumpkin && inside(l.house.x, l.house.top, l.house.w, l.ground - l.house.top);
+  const onPumpkin = g.scene === "halloween" && !onCat && pumpkinBoxes(l).some(inBox);
+  const onBough = g.scene === "minor-snow" && !onCat && inBox(persimmonBoughBox(l));
+  const onBrazier = g.scene === "minor-snow" && !onCat && !onBough && inBox(brazierBox(l));
+  const onRack = !night && g.scene === "minor-snow" && !onCat && !onBough && !onBrazier && inBox(bambooRackBox(l));
+  const onSnowCat = g.scene === "major-snow" && !onCat && inBox(snowCatBox(l));
+  const onEaves = g.scene === "major-snow" && !onCat && !onSnowCat && inBox(eavesBox(l));
+  const onPotatoPot = g.scene === "major-snow" && !onCat && !onSnowCat && !onEaves && inBox(potatoPotBox(l));
+  const onWintersweet = g.scene === "winter-solstice" && !onCat && inBox(wintersweetBox(l));
+  const onTangyuanBowl = g.scene === "winter-solstice" && !onCat && !onWintersweet && inBox(tangyuanBowlBox(l));
+  const blocked = onCat || onPumpkin || onBough || onBrazier || onSnowCat || onEaves || onPotatoPot || onWintersweet || onTangyuanBowl;
+  const onHouse = !blocked && inside(l.house.x, l.house.top, l.house.w, l.ground - l.house.top);
   const box = g.scene === "spring" && g.popped < CRACKERS ? crackerBox(l) : null;
   const onCrackers = !!box && inside(box.x, box.y, box.w, box.h);
   return {
     cat: onCat,
     pumpkin: onPumpkin,
+    bough: onBough,
+    brazier: onBrazier,
+    rack: onRack,
+    snowCat: onSnowCat,
+    eaves: onEaves,
+    potatoPot: onPotatoPot,
+    wintersweet: onWintersweet,
+    tangyuanBowl: onTangyuanBowl,
     house: onHouse,
-    grass: !onCat && !onPumpkin && !onHouse && p.y >= l.ground - 8,
-    sky: !onCat && !onPumpkin && !onHouse && p.y < l.ground - 18,
+    grass: !blocked && !onHouse && !onRack && p.y >= l.ground - 8,
+    sky: !blocked && !onHouse && p.y < l.ground - 18,
     crackers: onCrackers,
   };
 }
@@ -213,7 +308,19 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
   // Rain lights the lamps, by day too. In a storm 煤球 hides indoors: two eyes in the dark left window.
   const peak = l.house.x + PEAK;
   const windowLights = () => {
-    for (const [x, y, key] of windows(l, lit || scene === "rain" || scene === "storm")) put(x, y, key);
+    let warm: "amber" | "cream" | undefined;
+    let windowOn = lit || scene === "rain" || scene === "storm";
+    if (scene === "minor-snow") {
+      windowOn = night || lit || g.brazierFanned;
+      warm = g.brazierFanned ? "cream" : "amber";
+    } else if (scene === "major-snow") {
+      windowOn = night || lit;
+      warm = "amber";
+    } else if (scene === "winter-solstice") {
+      windowOn = night || lit || g.hearthStoked;
+      warm = g.hearthStoked ? "cream" : "amber";
+    }
+    for (const [x, y, key] of windows(l, windowOn, warm)) put(x, y, key);
     if (scene === "storm") {
       const wx = peak - 13;
       for (const y of [G - 12, G - 11, G - 9, G - 8]) for (let i = 1; i <= 3; i++) put(wx + i, y, "door");
@@ -224,6 +331,49 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
 
   sprite(sky.back, 0, 0, false, 0);
   if (scene === "halloween") sprite(decorations(l, night, time, g.pumpkinLit, still), 0, 0);
+  if (scene === "minor-snow") {
+    sprite(
+      minorSnowDecor(
+        l,
+        night,
+        time,
+        { fanned: g.brazierFanned, dropped: g.persimmonsDropped, swayUntil: g.boughSwayUntil, falling: g.fallingPersimmons },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
+  if (scene === "major-snow") {
+    sprite(
+      majorSnowDecor(
+        l,
+        time,
+        { stage: g.snowCatStage, glintAt: g.icicleGlintAt, prints: g.snowPrints },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
+  if (scene === "winter-solstice") {
+    sprite(
+      winterSolsticeDecor(
+        l,
+        time,
+        { stoked: g.hearthStoked, blooms: g.wintersweetBlooms, meteor: g.meteor, petals: g.petals },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
 
   if (scene === "spring") {
     sprite(crackers(l, g.popped), 0, 0, false, 0);
@@ -246,14 +396,18 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
     put(f.x + lean, top, "petalC");
   }
 
-  // Yarn: a 6-cell ball whose strands turn as it rolls, and a thread behind it.
+  // Yarn (or compact snowball in Major Snow): a 6-cell ball whose strands turn as it rolls.
   const yx = Math.round(g.yarn.x);
   const yy = G - 6;
-  for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if ((x - 2.5) ** 2 + (y - 2.5) ** 2 <= 8) put(yx + x, yy + y, "g3");
+  const ballMain: Key = scene === "major-snow" ? "snow" : "g3";
+  const ballMark: Key = scene === "major-snow" ? "ice" : "g4";
+  for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if ((x - 2.5) ** 2 + (y - 2.5) ** 2 <= 8) put(yx + x, yy + y, ballMain);
   const turn = Math.floor(g.yarn.x / 2) % 2;
-  for (const [x, y] of turn ? [[1, 1], [2, 2], [3, 3], [4, 2], [1, 4]] : [[4, 1], [3, 2], [2, 3], [1, 2], [4, 4]]) put(yx + x, yy + y, "g4");
-  const away = g.yarn.to >= g.yarn.from ? -1 : 1;
-  for (let i = 0; i < 10; i++) put(yx + (away < 0 ? -1 - i : 6 + i), G - 1 - (i % 4 === 1 || i % 4 === 2 ? 1 : 0), "g4");
+  for (const [x, y] of turn ? [[1, 1], [2, 2], [3, 3], [4, 2], [1, 4]] : [[4, 1], [3, 2], [2, 3], [1, 2], [4, 4]]) put(yx + x, yy + y, ballMark);
+  if (scene !== "major-snow") {
+    const away = g.yarn.to >= g.yarn.from ? -1 : 1;
+    for (let i = 0; i < 10; i++) put(yx + (away < 0 ? -1 - i : 6 + i), G - 1 - (i % 4 === 1 || i % 4 === 2 ? 1 : 0), "g4");
+  }
 
   if ((night && (scene === "clear" || scene === "cloudy")) || scene === "halloween") {
     for (const f of g.fireflies) {
@@ -315,6 +469,19 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
       sprite(scarf, Math.round(cat.x), oy, cat.dir === 1);
     }
     if (scene === "halloween") sprite(WITCH_HAT, Math.round(cat.x) + 2, oy + HAT_TOP[pose], cat.dir === 1, 12);
+    if (scene === "minor-snow") {
+      sprite(PLAID_SCARF, Math.round(cat.x) + 1, oy + PLAID_SCARF_ROW[pose], cat.dir === 1, 12);
+    }
+    if (scene === "major-snow") {
+      sprite(PLUSH_EARMUFFS, Math.round(cat.x), oy + EARMUFF_TOP[pose], cat.dir === 1, 14);
+    }
+    if (scene === "winter-solstice") {
+      sprite(KNIT_CAP, Math.round(cat.x) + 1, oy + CAP_TOP[pose], cat.dir === 1, 12);
+      if (night && !still && time < g.breathUntil && cat.mode !== "sleep") {
+        const bx = cat.dir === 1 ? Math.round(cat.x) + 14 : Math.round(cat.x) - 4;
+        sprite(BREATH_PUFF, bx, oy + 6, cat.dir === 1, 4);
+      }
+    }
     if (cat.mode === "sleep") {
       const rise = (time * 2) % 6;
       sprite(ZED_BIG, cat.x + 13, oy - 2 - Math.floor(rise / 2), false, 3);
@@ -325,6 +492,15 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
     if (scene === "halloween") {
       ctx.globalAlpha = still ? 1 : Math.min(1, (0.8 - h.age) / 0.3);
       sprite(CANDY, h.x - 2, h.y - (still ? 0 : Math.floor(h.age / 0.8 * 6)), false, 9);
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    if (isWinterTerm(scene)) {
+      ctx.globalAlpha = still ? 1 : Math.min(1, (0.9 - h.age) / 0.25);
+      const liftY = still ? 0 : Math.floor((h.age / 0.9) * 5);
+      if (scene === "minor-snow") sprite(PERSIMMON_CAKE_TOKEN, h.x - 1, h.y - liftY, false, 8);
+      else if (scene === "major-snow") sprite(SWEET_POTATO_TOKEN, h.x - 2, h.y - liftY, false, 9);
+      else sprite(TANGYUAN_SPOON_TOKEN, h.x - 2, h.y - liftY, false, 9);
       ctx.globalAlpha = 1;
       continue;
     }
@@ -364,6 +540,17 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
   }
 
   sprite(sky.front, 0, 0, false, 0);
+  if (scene === "minor-snow") sprite(minorSnowGraupel(l, night, time, still), 0, 0, false, 0);
+  if (scene === "major-snow") {
+    sprite(majorSnowFlakes(l, time, g.snowFlurryUntil, still), 0, 0, false, 0);
+    if (!still && time < g.snowPuffUntil) {
+      const sb = snowCatBox(l);
+      const spread = Math.round((1 - (g.snowPuffUntil - time) / 0.28) * 3);
+      for (const [dx, dy] of [[-1, 2], [sb.w, 2], [2, -1], [sb.w - 3, -1]]) {
+        put(sb.x + dx + (dx < 2 ? -spread : spread), sb.y + dy - spread, "snow");
+      }
+    }
+  }
 
   // At night only the windows and 煤球's eyes come through the fog.
   if (scene === "fog" && night) {
@@ -450,6 +637,7 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         pointer: null,
         overCat: false,
         overHouse: false,
+        houseWarm: sameScene?.houseWarm ?? false,
         pounce: null,
         pets: g?.pets ?? 0,
         time: g?.time ?? 0,
@@ -470,6 +658,25 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         petUntil: 0,
         blinkUntil: 0,
         targetSize: 0,
+        // Minor Snow (transient falling fruit clears on scene change)
+        brazierFanned: sameScene?.brazierFanned ?? false,
+        persimmonsDropped: sameScene?.persimmonsDropped ?? 0,
+        boughSwayUntil: 0,
+        fallingPersimmons: sameWidth?.fallingPersimmons ?? [],
+        // Major Snow (transient flurries, glints, paw prints clear on scene change)
+        snowCatStage: sameScene?.snowCatStage ?? (still ? 3 : 1),
+        snowPrints: sameWidth?.snowPrints ?? [],
+        snowPrintParity: sameWidth?.snowPrintParity ?? 0,
+        icicleGlintAt: null,
+        snowFlurryUntil: 0,
+        snowPuffUntil: 0,
+        // Winter Solstice (transient meteor, breath puffs, petals clear on scene change)
+        hearthStoked: sameScene?.hearthStoked ?? false,
+        wintersweetBlooms: sameScene?.wintersweetBlooms ?? (still ? 5 : 4),
+        meteor: null,
+        petals: [],
+        nextBreathAt: (g?.time ?? 0) + 5,
+        breathUntil: 0,
       };
       g.cat = { ...g.cat, x: Math.min(g.cat.x, l.spots.maxX) };
       gardenRef.current = g;
@@ -478,22 +685,35 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
 
     const render = () => {
       if (!g) return;
-      const hit = hits(g);
+      const hit = hits(g, night);
       let cat = g.cat;
       if (still) cat = { ...cat, mode: hit.cat ? "happy" : cat.mode };
-      if (scene === "halloween" && g.time < g.petUntil) cat = { ...cat, mode: "happy" };
+      if (g.time < g.petUntil) cat = { ...cat, mode: "happy" };
       let pose = poseOf(cat, g.time);
       if (scene === "snow" && (pose === "idle" || pose === "blink")) pose = "happy"; // 煤球 loves snow
       if (scene === "halloween" && g.time < g.blinkUntil) pose = "blink";
-      draw(ctx, { ...g, cat }, theme, pose, hit.house, still);
+      draw(ctx, { ...g, cat }, theme, pose, hit.house || g.houseWarm, still);
       if (g.fade) {
         const stepNo = Math.floor(g.fade.age / FADE_STEP) + 1;
         if (stepNo >= FADE_STEPS) g.fade = null;
         else dither(ctx, g.fade.from, stepNo);
       }
+      canvas.dataset.houseWarm = String(g.houseWarm);
+      wrap.querySelector('[data-garden-action="house"]')?.setAttribute("aria-pressed", String(g.houseWarm));
+      canvas.dataset.crackersPopped = String(g.popped);
+      canvas.dataset.fireworks = String(g.fireworks.length + g.trails.length);
+      canvas.dataset.yarnX = String(Math.round(g.yarn.x));
       canvas.dataset.pumpkinLit = String(g.pumpkinLit);
       canvas.dataset.ghost = String(!!g.ghost && (still || g.time - g.ghost.born < 1.6));
       wrap.querySelector('[data-garden-action="pumpkin"]')?.setAttribute("aria-pressed", String(g.pumpkinLit));
+      canvas.dataset.brazierFanned = String(g.brazierFanned);
+      canvas.dataset.persimmonsDropped = String(g.persimmonsDropped);
+      wrap.querySelector('[data-garden-action="brazier"]')?.setAttribute("aria-pressed", String(g.brazierFanned));
+      canvas.dataset.snowCatStage = String(g.snowCatStage);
+      canvas.dataset.icicleGlint = String(g.icicleGlintAt !== null && (still || g.time - g.icicleGlintAt < ICICLE_GLINT_FOR));
+      canvas.dataset.hearthStoked = String(g.hearthStoked);
+      canvas.dataset.wintersweetBlooms = String(g.wintersweetBlooms);
+      wrap.querySelector('[data-garden-action="hearth"]')?.setAttribute("aria-pressed", String(g.hearthStoked));
       canvas.dataset.catX = String(Math.round((g.cat.x + 8) * CELL));
       canvas.dataset.catY = String(Math.round((g.l.ground - 6) * CELL));
       if (g.activity) {
@@ -549,7 +769,7 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       if (!g) return;
       g.time += dt;
       if (g.fade) g.fade.age += dt;
-      const hit = hits(g);
+      const hit = hits(g, night);
       const { l } = g;
       const w = l.w;
       const pan = (x: number) => panAt(x, w);
@@ -601,6 +821,26 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
           g.lastPrint = x;
         }
       }
+      if (scene === "major-snow") {
+        if (g.cat.mode === "walk" || g.cat.mode === "chase") {
+          const x = Math.round(g.cat.x) + (g.cat.dir === 1 ? 3 : 10);
+          if (Math.abs(x - g.lastPrint) >= 5) {
+            g.snowPrints = [...g.snowPrints, { x, row: g.snowPrintParity, born: g.time }].slice(-MAX_SNOW_PRINTS);
+            g.snowPrintParity = g.snowPrintParity === 0 ? 1 : 0;
+            g.lastPrint = x;
+          }
+        }
+        g.snowPrints = g.snowPrints.filter((p) => g!.time - p.born < SNOW_PRINT_FOR);
+        if (g.icicleGlintAt !== null && g.time - g.icicleGlintAt >= ICICLE_GLINT_FOR) g.icicleGlintAt = null;
+      }
+      if (scene === "winter-solstice") {
+        if (g.meteor && g.time - g.meteor.born >= METEOR_FOR) g.meteor = null;
+        g.petals = g.petals.filter((p) => p.y + (g!.time - p.born) * 6 < l.ground);
+        if (night && g.time >= g.nextBreathAt) {
+          g.breathUntil = g.time + 0.6;
+          g.nextBreathAt = g.time + 5 + Math.random() * 2;
+        }
+      }
 
       if (scene === "spring") {
         // 鞭炮: one cracker every 2 frames, from the bottom up. 煤球 runs to the house side.
@@ -640,7 +880,9 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         y.t = Math.min(1, y.t + dt / 0.8);
         y.x = y.from + (y.to - y.from) * (1 - (1 - y.t) ** 3);
       }
-      g.hearts = g.hearts.map((h) => ({ ...h, age: h.age + dt })).filter((h) => h.age < (scene === "halloween" ? 0.8 : 1.2));
+      g.hearts = g.hearts
+        .map((h) => ({ ...h, age: h.age + dt }))
+        .filter((h) => h.age < (scene === "halloween" ? 0.8 : isWinterTerm(scene) ? 0.9 : 1.2));
       for (const f of l.flowers) {
         const near = Math.abs(g.cat.x + 8 - f.x) < 4 && g.cat.mode !== "sit";
         const left = Math.max(0, (g.sway.get(f.x) ?? 0) - dt);
@@ -651,16 +893,87 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
     const pet = () => {
       if (!g) return;
       const now = performance.now() / 1000;
-      if (scene === "halloween" && now - g.lastTreat < 1) return;
+      if ((scene === "halloween" || isWinterTerm(scene)) && now - g.lastTreat < 1) return;
       g.lastTreat = now;
       g.pets++;
-      if (scene === "halloween") {
-        g.petUntil = g.time + 0.8;
-        g.blinkUntil = 0;
-        g.cat = { ...g.cat, mode: "happy", timer: 0.8 };
-      }
-      g.hearts = [...g.hearts, { x: g.cat.x + 6, y: g.l.ground - (scene === "halloween" ? 31 : 18), age: 0 }].slice(-12);
+      const dur = scene === "halloween" ? 0.8 : scene === "spring" || isWinterTerm(scene) ? 0.9 : 0.6;
+      g.petUntil = g.time + dur;
+      g.blinkUntil = 0;
+      g.cat = { ...g.cat, mode: "happy", timer: dur };
+      g.hearts = [
+        ...g.hearts,
+        { x: g.cat.x + 6, y: g.l.ground - (scene === "halloween" ? 31 : isWinterTerm(scene) ? 24 : 18), age: 0 },
+      ].slice(-12);
       petSound(petCue(scene), panAt(g.cat.x + 8, g.l.w));
+    };
+    const warmHouse = () => {
+      if (!g) return;
+      g.houseWarm = !g.houseWarm;
+      if (scene !== "rain" && scene !== "storm") lampSound(panAt(g.l.house.x + g.l.house.w / 2, g.l.w));
+      if (g.houseWarm) {
+        if (still) {
+          g.petUntil = 0;
+          g.cat = { ...g.cat, x: g.l.spots.cushion, mode: "sleep", goal: "cushion", target: g.l.spots.cushion };
+        } else if (scene !== "rain" && scene !== "storm") {
+          g.cat = { ...g.cat, mode: "walk", goal: "cushion", target: g.l.spots.cushion, dir: g.l.spots.cushion >= g.cat.x ? 1 : -1 };
+        }
+      }
+    };
+    const rollYarn = (targetX?: number) => {
+      if (!g) return;
+      const { l } = g;
+      const raw = targetX ?? Math.round(l.spots.minX + (l.spots.maxX - l.spots.minX) * 0.45);
+      const to = Math.max(l.spots.minX, Math.min(l.spots.maxX + 10, raw));
+      if (still) {
+        g.yarn = { x: to, from: to, to, t: 1 };
+        g.petUntil = 0;
+        g.cat = { ...g.cat, mode: "alert", goal: "yarn", target: Math.max(l.spots.minX, Math.min(l.spots.maxX, to - 5)), dir: to >= g.cat.x ? 1 : -1 };
+      } else {
+        g.yarn = { x: g.yarn.x, from: g.yarn.x, to, t: 0 };
+        g.pounce = to + 3;
+      }
+      yarnSound(panAt(to, l.w));
+    };
+    const lightCrackers = () => {
+      if (!g || scene !== "spring" || g.popped >= CRACKERS) return;
+      const { l } = g;
+      if (still) {
+        for (let i = g.popped; i < CRACKERS; i++) {
+          const at = l.tree ? crackerAt(l, i) : { x: l.house.x - 12, y: l.ground - 6 };
+          g.bits.push({ x: at.x, y: l.ground + (i % 3), rest: l.ground + (i % 3), key: i % 2 ? "red" : "redDark" });
+        }
+        g.popped = CRACKERS;
+        g.petUntil = 0;
+        g.cat = { ...g.cat, x: l.spots.maxX, mode: "alert", dir: 1 };
+        popSound(panAt(l.tree ? l.tree.x + 28 : l.house.x - 12, l.w));
+        return;
+      }
+      if (g.nextPop === null) {
+        g.nextPop = g.time;
+        g.cat = { ...g.cat, mode: "chase", goal: "wander", target: l.spots.maxX, dir: 1 };
+      }
+    };
+    const launchFirework = (x?: number, y?: number) => {
+      if (!g || scene !== "spring") return;
+      const { l } = g;
+      const tx = Math.round(x ?? l.w * 0.44);
+      const ty = Math.round(y ?? Math.max(10, l.ground - 52));
+      const pan = panAt(tx, l.w);
+      if (!night) {
+        g.bits.push({ x: tx, y: still ? l.ground + 1 : ty, rest: l.ground + Math.floor(Math.random() * 3), key: "red" });
+        skySound("paper", pan);
+        return;
+      }
+      if (still) {
+        if (g.fireworks.length >= MAX_BURSTS) g.fireworks = [];
+        else g.fireworks = [...g.fireworks, { x: tx, y: ty, born: g.time - 0.5, color: g.fireworks.length % 2 ? "gold" : "red" }];
+        g.petUntil = 0;
+        g.cat = { ...g.cat, mode: "alert", dir: tx > g.cat.x + 8 ? 1 : -1 };
+        burstSound(pan);
+        return;
+      }
+      if (launch(tx, ty, true)) skySound("firework", pan, (l.ground - 2 - ty) / 60);
+      g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: tx > g.cat.x + 8 ? 1 : -1 };
     };
     const pumpkin = () => {
       if (!g) return;
@@ -673,6 +986,81 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       if (next === g.ghost && !still) return;
       g.ghost = still ? (g.ghost ? null : next) : next;
       if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+    };
+    const fanBrazier = () => {
+      if (!g) return;
+      g.brazierFanned = !g.brazierFanned;
+      lampSound(panAt(brazierBox(g.l).x, g.l.w));
+      if (!still && g.brazierFanned) {
+        const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, brazierBox(g.l).x - 16));
+        g.cat = { ...g.cat, mode: "walk", goal: "cushion", target, dir: target >= g.cat.x ? 1 : -1 };
+      }
+    };
+    const shakeBough = () => {
+      if (!g) return;
+      g.boughSwayUntil = still ? 0 : g.time + 0.35;
+      const { nextDropped, spawned } = shakePersimmon(g.persimmonsDropped);
+      g.persimmonsDropped = nextDropped;
+      const box = persimmonBoughBox(g.l);
+      if (spawned) {
+        const dropX = box.x + Math.min(box.w - 4, 2 + (nextDropped - 1) * 4);
+        g.fallingPersimmons = [
+          ...g.fallingPersimmons,
+          { x: dropX, fromY: box.y + 4, toY: g.l.ground - 4, born: still ? -10 : g.time },
+        ];
+        if (!still) g.cat = { ...g.cat, mode: "alert", timer: 0.9, goal: "wander", target: g.cat.x, dir: dropX > g.cat.x + 8 ? 1 : -1 };
+      }
+      dropSound(panAt(box.x, g.l.w));
+    };
+    const buildSnowCat = () => {
+      if (!g) return;
+      g.snowCatStage = nextSnowCatStage(g.snowCatStage);
+      const sb = snowCatBox(g.l);
+      if (!still) {
+        g.snowPuffUntil = g.time + 0.28;
+        if (g.snowCatStage === 3) {
+          const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, sb.x - 15));
+          g.cat = { ...g.cat, mode: "walk", goal: "wander", target, timer: 1.8, dir: target >= g.cat.x ? 1 : -1 };
+        }
+      }
+      popSound(panAt(sb.x, g.l.w));
+    };
+    const chimeIcicles = () => {
+      if (!g) return;
+      g.icicleGlintAt = still ? (g.icicleGlintAt === null ? 0 : null) : g.time;
+      lampSound(panAt(g.l.house.x + g.l.house.w / 2, g.l.w));
+    };
+    const triggerFlurry = (x: number) => {
+      if (!g) return;
+      g.snowFlurryUntil = g.time + FLURRY_FOR;
+      if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+      skySound("firefly", panAt(x, g.l.w));
+    };
+    const stokeHearth = () => {
+      if (!g) return;
+      g.hearthStoked = !g.hearthStoked;
+      lampSound(panAt(g.l.house.x + g.l.house.w / 2, g.l.w));
+      if (!still && g.hearthStoked) {
+        const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, tangyuanBowlBox(g.l).x - 16));
+        g.cat = { ...g.cat, mode: "walk", goal: "cushion", target, dir: target >= g.cat.x ? 1 : -1 };
+      }
+    };
+    const bloomWintersweet = () => {
+      if (!g) return;
+      g.wintersweetBlooms = openWintersweet(g.wintersweetBlooms);
+      const ws = wintersweetBox(g.l);
+      if (!still) {
+        g.petals = [...g.petals, { x: ws.x + 4 + (g.wintersweetBlooms % 6), y: ws.y + 4, born: g.time }].slice(-8);
+      }
+      dropSound(panAt(ws.x, g.l.w));
+    };
+    const sendMeteor = (x: number, y: number) => {
+      if (!g) return;
+      const next = launchMeteor(g.meteor, g.l, x, y, g.time);
+      if (next === g.meteor && !still) return;
+      g.meteor = still ? (g.meteor ? null : next) : next;
+      if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+      skySound("firefly", panAt(x, g.l.w));
     };
 
     build();
@@ -691,8 +1079,21 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
     const onMove = (e: PointerEvent) => {
       if (!g) return;
       g.pointer = toGrid(e);
-      const hit = hits(g);
-      canvas.style.cursor = hit.cat || hit.pumpkin || hit.house || hit.grass || hit.crackers || (scene === "halloween" && hit.sky) ? "pointer" : "default";
+      const hit = hits(g, night);
+      const interactive =
+        hit.cat ||
+        hit.pumpkin ||
+        hit.bough ||
+        hit.brazier ||
+        hit.snowCat ||
+        hit.eaves ||
+        hit.wintersweet ||
+        hit.tangyuanBowl ||
+        hit.house ||
+        hit.grass ||
+        hit.crackers ||
+        (hit.sky && (scene === "halloween" || scene === "major-snow" || (scene === "winter-solstice" && night)));
+      canvas.style.cursor = interactive ? "pointer" : "default";
       if (still) render();
     };
     const onLeave = () => {
@@ -703,7 +1104,7 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
     const onDown = (e: PointerEvent) => {
       if (!g || (e.target as HTMLElement).closest("button")) return;
       g.pointer = toGrid(e);
-      const hit = hits(g);
+      const hit = hits(g, night);
       const { l } = g;
       if (scene === "halloween") {
         if (hit.cat) { pet(); g.overCat = true; render(); return; }
@@ -715,23 +1116,41 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
           return;
         }
       }
+      if (scene === "minor-snow") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.bough) { shakeBough(); render(); return; }
+        if (hit.brazier || hit.house) { fanBrazier(); render(); return; }
+        if (hit.rack) { render(); return; }
+      }
+      if (scene === "major-snow") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.snowCat) { buildSnowCat(); render(); return; }
+        if (hit.eaves) { chimeIcicles(); render(); return; }
+        if (hit.potatoPot) { render(); return; }
+        if (hit.sky) { triggerFlurry(g.pointer.x); render(); return; }
+      }
+      if (scene === "winter-solstice") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.wintersweet) { bloomWintersweet(); render(); return; }
+        if (hit.house || hit.tangyuanBowl) { stokeHearth(); render(); return; }
+        if (hit.sky && night) { sendMeteor(g.pointer.x, g.pointer.y); render(); return; }
+      }
+      if (scene === "spring") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.crackers) { lightCrackers(); render(); return; }
+      }
+      if (hit.cat) { pet(); g.overCat = true; render(); return; }
       if (still) return;
       if (hit.grass) {
-        const to = Math.max(l.spots.minX, Math.min(l.spots.maxX + 10, g.pointer.x - 3));
-        g.yarn = { x: g.yarn.x, from: g.yarn.x, to, t: 0 };
-        g.pounce = to + 3;
-        yarnSound(panAt(to, l.w));
+        rollYarn(g.pointer.x - 3);
       } else if (hit.sky) {
         const { x, y } = g.pointer;
         const cue = skyCue(scene, night);
         const pan = panAt(x, l.w);
         if (cue === "firework") {
-          // The whistle lasts as long as the trail climbs: 60 cells a second.
-          if (launch(x, y, true)) skySound(cue, pan, (l.ground - 2 - Math.round(y)) / 60);
-          g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+          launchFirework(x, y);
         } else if (cue === "paper") {
-          g.bits.push({ x: Math.round(x), y: Math.round(y), rest: l.ground + Math.floor(Math.random() * 3), key: "red" });
-          skySound(cue, pan);
+          launchFirework(x, y);
         } else if (cue === "drop") {
           g.bits.push({ x: Math.round(x), y: Math.round(y), rest: l.ground - 2, key: "drop" });
         } else if (cue === "firefly") {
@@ -744,11 +1163,21 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       if (!g) return;
       const action = (e.currentTarget as HTMLElement).dataset.gardenAction;
       if (action === "pet") pet();
+      if (action === "house") warmHouse();
+      if (action === "yarn") rollYarn();
+      if (action === "crackers") lightCrackers();
+      if (action === "firework") launchFirework();
       if (action === "pumpkin") pumpkin();
       if (action === "ghost") {
         if (night) ghost(Math.round(g.l.w * 0.58), 28);
         else g.fireflies = [...g.fireflies, { x: Math.round(g.l.w * 0.58), y: 28, phase: g.time }].slice(-MAX_FIREFLIES);
       }
+      if (action === "brazier") fanBrazier();
+      if (action === "persimmon") shakeBough();
+      if (action === "snow-cat") buildSnowCat();
+      if (action === "icicles") chimeIcicles();
+      if (action === "hearth") stokeHearth();
+      if (action === "wintersweet") bloomWintersweet();
       render();
     };
     const controls = wrap.querySelectorAll<HTMLButtonElement>("[data-garden-action]");
@@ -818,6 +1247,54 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
             <button key={action} type="button" data-garden-action={action}
               className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
               aria-pressed={action === "pumpkin" ? nightOf(theme) : undefined}>{action === "ghost" && theme === "light" ? "Add a firefly" : label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "minor-snow" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["brazier", "Fan the brazier"], ["persimmon", "Shake persimmon bough"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "brazier" ? false : undefined}>{label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "major-snow" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["snow-cat", "Build snow-cat"], ["icicles", "Chime eave icicles"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              >{label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "winter-solstice" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["hearth", "Stoke the hearth"], ["wintersweet", "Bloom wintersweet"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "hearth" ? false : undefined}>{label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "spring" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["crackers", "Light firecrackers"], ["firework", "Launch firework"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              >{action === "firework" && theme === "light" ? "Drop paper scrap" : label}</button>
+          ))}
+        </div>
+      )}
+      {scene !== "halloween" && scene !== "spring" && !isWinterTerm(scene) && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {(scene === "storm"
+            ? ([ ["house", "Warm the house"], ["yarn", "Roll yarn"] ] as const)
+            : ([ ["pet", "Pet Meiqiu"], ["house", "Warm the house"], ["yarn", "Roll yarn"] ] as const)
+          ).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "house" ? false : undefined}>{label}</button>
           ))}
         </div>
       )}

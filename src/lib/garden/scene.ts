@@ -210,6 +210,71 @@ function paintScraps(c: Canvas, l: Layout) {
   }
 }
 
+/** Major Snow: deep drifts with a 1-cell ice-blue contrast shadow, snow caps, and edge snow clouds. */
+function paintMajorSnow(c: Canvas, l: Layout) {
+  const G = l.ground;
+  for (let x = 0; x < l.w; x++) {
+    for (let y = 2; y < G; y++) {
+      const key = c.keys[y * l.w + x];
+      if (key === null || key === "hill" || key.startsWith("star") || key.startsWith("moon") || key.startsWith("sun")) continue;
+      if (!SETTLES.has(key)) break;
+      c.set(x, y, "snow");
+      if (y + 1 < G && SETTLES.has(c.keys[(y + 1) * l.w + x]!)) c.set(x, y + 1, hash(x, y, 21) > 0.35 ? "snow" : "ice");
+      if (y + 2 < G && SETTLES.has(c.keys[(y + 2) * l.w + x]!) && hash(x, y, 22) > 0.55) c.set(x, y + 2, "ice");
+      break;
+    }
+    // Deep snowdrifts across the grass with a crisp 1-cell ice-blue shadow underneath.
+    c.set(x, G - 1, "snow");
+    c.set(x, G, "snow");
+    c.set(x, G + 1, "ice");
+  }
+  // Thin snow clouds tucked into the upper left and right edges, leaving the moon/sun clear.
+  const leftW = Math.min(28, Math.floor(l.w * 0.14));
+  const rightW = Math.min(26, Math.floor(l.w * 0.13));
+  c.rect(4, 3, leftW, 1, "cloudLit");
+  c.rect(2, 4, leftW + 4, 2, "cloud");
+  c.rect(l.w - rightW - 6, 4, rightW, 1, "cloudLit");
+  c.rect(l.w - rightW - 8, 5, rightW + 4, 2, "cloud");
+}
+
+export function chimneyTop(l: Layout) {
+  return { x: l.house.x + PEAK + 8, y: l.ground - ROOF_TOP + 2 };
+}
+
+/** Winter Solstice: hearth chimney on the right roof slope, plus rime frost on eaves, fence, and night grass tips. */
+function paintSolstice(c: Canvas, l: Layout, night: boolean) {
+  const G = l.ground;
+  // 4 × 5 brick chimney on the right slope with a rime-frosted lip.
+  const { x: cx, y: cy } = chimneyTop(l);
+  c.rect(cx, cy, 4, 1, "rime");
+  c.rect(cx, cy + 1, 4, 4, "brick");
+  c.rect(cx, cy + 1, 1, 4, "brickLit");
+  // Thin rime on the eaves.
+  c.rect(l.house.x, G - WALL - 1, 5, 1, "rime");
+  c.rect(l.house.x + l.house.w - 5, G - WALL - 1, 5, 1, "rime");
+  if (night) {
+    // Rime on fence rails and grass tips.
+    if (l.fence) {
+      for (let x = l.fence.x; x < l.fence.x + l.fence.w; x += 3) c.set(x, G - 7, "rime");
+    }
+    for (let x = 0; x < l.w; x += 5) {
+      if (x >= l.house.x + 3 && x <= l.house.x + 35) continue;
+      if (c.keys[(G - 1) * l.w + x] === "g2" || c.keys[(G - 1) * l.w + x] === "g3") c.set(x, G - 1, "rime");
+    }
+  } else {
+    // Low winter afternoon sun-patch before the doorstep.
+    c.rect(Math.max(2, l.bowl - 24), G, 22, 1, "sunPatch");
+  }
+}
+
+/** Sun altitude in daylight for the three winter solar terms (steps down from y = 11). */
+export function sunAltitude(scene: SceneName): number {
+  if (scene === "minor-snow") return 18;
+  if (scene === "major-snow") return 21;
+  if (scene === "winter-solstice") return 24;
+  return 11;
+}
+
 /** Everything that never moves: sky, hills, soil, grass, tree, fence, house, bowl, and what the weather leaves. */
 export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear", phase: MoonPhase = "waningCrescent"): Pixels {
   const c = new Canvas(l.w, l.h);
@@ -234,12 +299,24 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
   }
 
   // By day a round sun; by night tonight's phase (Paper: banner · 月相).
+  // Winter solar terms lower the midday sun step by step (18 -> 21 -> 24).
   if (moon) {
-    const MOON_KEYS: Record<string, Key> = { "#": "moon", "+": night ? "moon2" : "moon", ".": night ? "moonDark" : "moon" };
+    const winterTerm = scene === "minor-snow" || scene === "major-snow" || scene === "winter-solstice";
+    const cy = night ? l.moon.y : sunAltitude(scene);
+    const MOON_KEYS: Record<string, Key> = night
+      ? { "#": "moon", "+": "moon2", ".": "moonDark" }
+      : winterTerm
+        ? { "#": "sunGold", "+": "sunEdge", ".": "sunGold" }
+        : { "#": "moon", "+": "moon", ".": "moon" };
     const art = moonArt(night ? phase : "full");
     art.forEach((row, j) => [...row].forEach((ch, i) => {
-      if (MOON_KEYS[ch]) c.set(l.moon.x - 5 + i, l.moon.y - 5 + j, MOON_KEYS[ch]);
+      if (MOON_KEYS[ch]) c.set(l.moon.x - 5 + i, cy - 5 + j, MOON_KEYS[ch]);
     }));
+    if (scene === "minor-snow") {
+      // Single thin cloud wisp beside the moon / late-autumn sun.
+      c.rect(l.moon.x + 2, cy + 2, 9, 1, "cloudLit");
+      c.rect(l.moon.x + 1, cy + 3, 12, 1, "cloud");
+    }
   }
 
   for (let x = 0; x < l.w; x++) {
@@ -324,10 +401,12 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
     c.rect(wx - 1, G - 6, 7, 1, "wood3"); // sill
   }
 
-  // Bowl with a few kibbles.
-  c.rect(l.bowl, G - 3, 8, 1, "wood3");
-  c.rect(l.bowl + 1, G - 2, 6, 2, "wood2");
-  for (const x of [2, 4, 5]) c.set(l.bowl + x, G - 4, "petalC");
+  // Bowl with a few kibbles (winter solar terms place their own doorstep prop here).
+  if (scene !== "minor-snow" && scene !== "major-snow" && scene !== "winter-solstice") {
+    c.rect(l.bowl, G - 3, 8, 1, "wood3");
+    c.rect(l.bowl + 1, G - 2, 6, 2, "wood2");
+    for (const x of [2, 4, 5]) c.set(l.bowl + x, G - 4, "petalC");
+  }
 
   for (let x = 0; x < l.w; x++) {
     let tall = Math.floor(hash(x, 5) ** 2 * 4);
@@ -344,6 +423,12 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
 
   if (scene === "rain" || scene === "storm") paintPuddles(c, l);
   if (scene === "snow") paintSnow(c, l);
+  if (scene === "minor-snow" && !night) {
+    // Crisp afternoon sun-patch beside the bamboo drying rack.
+    c.rect(Math.max(2, l.bowl - 32), G, 20, 1, "sunPatch");
+  }
+  if (scene === "major-snow") paintMajorSnow(c, l);
+  if (scene === "winter-solstice") paintSolstice(c, l, night);
   if (scene === "spring") {
     paintSpringDoor(c, peak, G);
     if (!night) paintScraps(c, l);
@@ -354,11 +439,11 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
 }
 
 /** Windows and attic light, drawn over the static house each frame. */
-export function windows(l: Layout, lit: boolean): [number, number, Key][] {
+export function windows(l: Layout, lit: boolean, warm?: "amber" | "cream"): [number, number, Key][] {
   const G = l.ground;
   const peak = l.house.x + PEAK;
   const out: [number, number, Key][] = [];
-  const glass: Key = lit ? "lamp" : "lampOff";
+  const glass: Key = lit ? (warm ?? "lamp") : "lampOff";
   for (const wx of [peak - 13, peak + 9]) {
     for (const y of [G - 12, G - 11, G - 9, G - 8]) for (let i = 0; i < 3; i++) out.push([wx + 1 + i, y, glass]);
     if (lit) out.push([wx + 1, G - 12, "ink"]);

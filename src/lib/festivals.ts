@@ -5,7 +5,7 @@ type Rule =
   | { solar: [month: number, day: number] }
   /** The day before lunar new year: the last day of month 12, which has 29 or 30 days. */
   | { eve: true }
-  | { term: "qingming" | "winter-solstice" };
+  | { term: "qingming" | "minor-snow" | "major-snow" | "winter-solstice" };
 
 /**
  * The festivals that get a theme. Order is priority: when two fall on one day, the earlier one wins.
@@ -20,6 +20,8 @@ export const FESTIVALS = [
   { id: "qixi", name: "Qixi", rule: { lunar: [7, 7] } },
   { id: "mid-autumn", name: "Mid-Autumn Festival", rule: { lunar: [8, 15] } },
   { id: "double-ninth", name: "Double Ninth", rule: { lunar: [9, 9] } },
+  { id: "minor-snow", name: "Minor Snow", rule: { term: "minor-snow" } },
+  { id: "major-snow", name: "Major Snow", rule: { term: "major-snow" } },
   { id: "winter-solstice", name: "Winter Solstice", rule: { term: "winter-solstice" } },
   { id: "laba", name: "Laba", rule: { lunar: [12, 8] } },
   { id: "new-year", name: "New Year's Day", rule: { solar: [1, 1] } },
@@ -38,10 +40,17 @@ function datesFor(rule: Rule, year: number): string[] {
   // Lunar new year always falls between 21 Jan and 20 Feb, so the eve is in the same solar year.
   if ("eve" in rule) return [Lunar.fromYmd(year, 1, 1).next(-1).getSolar().toYmd()];
   if ("term" in rule) {
-    // Qingming is the last jie before 30 Apr; the winter solstice is the last qi before 31 Dec.
-    return rule.term === "qingming"
-      ? [Solar.fromYmd(year, 4, 30).getLunar().getPrevJie().getSolar().toYmd()]
-      : [Solar.fromYmd(year, 12, 31).getLunar().getPrevQi().getSolar().toYmd()];
+    // Each solar term is the last jie or qi before a date that always falls after it.
+    switch (rule.term) {
+      case "qingming":
+        return [Solar.fromYmd(year, 4, 30).getLunar().getPrevJie().getSolar().toYmd()];
+      case "minor-snow":
+        return [Solar.fromYmd(year, 11, 30).getLunar().getPrevQi().getSolar().toYmd()];
+      case "major-snow":
+        return [Solar.fromYmd(year, 12, 15).getLunar().getPrevJie().getSolar().toYmd()];
+      case "winter-solstice":
+        return [Solar.fromYmd(year, 12, 31).getLunar().getPrevQi().getSolar().toYmd()];
+    }
   }
   // A lunar date of year N can land in solar year N or N + 1 (Laba does), so try both lunar years.
   const [month, day] = rule.lunar;

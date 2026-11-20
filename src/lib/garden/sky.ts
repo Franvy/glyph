@@ -22,6 +22,9 @@ const BY_FESTIVAL: Record<string, SceneName> = {
   "new-years-eve": "spring",
   "spring-festival": "spring",
   halloween: "halloween",
+  "minor-snow": "minor-snow",
+  "major-snow": "major-snow",
+  "winter-solstice": "winter-solstice",
 };
 
 /**
