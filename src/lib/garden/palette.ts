@@ -16,7 +16,12 @@ export type Key =
   | "umbrellaGold" | "umbrellaLight" | "umbrellaShade" | "umbrellaHandle"
   | "flake" | "flakeArm" | "snow" | "snowShade" | "fog" | "fogThin"
   | "red" | "redLit" | "redDark" | "gold" | "brass" | "spark" | "smoke"
-  | "pumpkin" | "pumpkinShade" | "candle" | "cutout" | "costume" | "ghost" | "web";
+  | "pumpkin" | "pumpkinShade" | "candle" | "cutout" | "costume" | "ghost" | "web"
+  | "persimmon" | "persimmonHi" | "persimmonDeep" | "clay" | "clayLit" | "clayDark" | "clayFoot"
+  | "bamboo" | "bambooDark" | "amber" | "cream"
+  | "ice" | "rime" | "berry" | "berryHi" | "potato" | "potatoSkin" | "glint"
+  | "blush" | "wool" | "plumHeart" | "plumBud" | "brick" | "brickLit"
+  | "sunPatch" | "sunGold" | "sunEdge";
 
 export type Palette = Record<Key, string>;
 
@@ -44,6 +49,14 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     fogThin: "#1d1d1c", red: "#c8372a", redLit: "#f0603f", redDark: "#7a1f1a", gold: "#f0b941", brass: "#a8741e",
     spark: "#fff1c9", smoke: "#2b1613",
     pumpkin: "#e99a45", pumpkinShade: "#92552e", candle: "#f6ca78", cutout: "#4c3629", costume: "#48434e", ghost: "#edeae3", web: "#edeae3",
+    persimmon: "#e86f3a", persimmonHi: "#f49b56", persimmonDeep: "#b84c22",
+    clay: "#8c4a32", clayLit: "#a85d42", clayDark: "#733b28", clayFoot: "#5c3022",
+    bamboo: "#c2a378", bambooDark: "#9e7e56", amber: "#f2c478", cream: "#fff3d6",
+    ice: "#9bc0f5", rime: "#c9d9f3", berry: "#d94f4f", berryHi: "#f27979",
+    potato: "#f2a94e", potatoSkin: "#7a4b47", glint: "#ffffff",
+    blush: "#e89aa8", wool: "#c96a76", plumHeart: "#d97b88", plumBud: "#a88444",
+    brick: "#5c4438", brickLit: "#7d5b4b",
+    sunPatch: "#1c1c1b", sunGold: "#f2c478", sunEdge: "#e3a32a",
   },
   light: {
     ...UMBRELLA,
@@ -61,5 +74,13 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     fogThin: "#f1f0ec", red: "#e0412f", redLit: "#e0412f", redDark: "#a82a20", gold: "#e3a32a", brass: "#b97a14",
     spark: "#fff1c9", smoke: "#d4d1ca",
     pumpkin: "#e99a45", pumpkinShade: "#92552e", candle: "#f6ca78", cutout: "#4c3629", costume: "#48434e", ghost: "#edeae3", web: "#8f8b83",
+    persimmon: "#d95826", persimmonHi: "#f49b56", persimmonDeep: "#a63f1a",
+    clay: "#8c4a32", clayLit: "#a85d42", clayDark: "#733b28", clayFoot: "#5c3022",
+    bamboo: "#c2a378", bambooDark: "#9e7e56", amber: "#e3a32a", cream: "#fff3d6",
+    ice: "#b8d2f7", rime: "#9bc0f5", berry: "#c83e3e", berryHi: "#f27979",
+    potato: "#f2a94e", potatoSkin: "#7a4b47", glint: "#ffffff",
+    blush: "#e89aa8", wool: "#c96a76", plumHeart: "#d97b88", plumBud: "#a88444",
+    brick: "#5c4438", brickLit: "#7d5b4b",
+    sunPatch: "#f5ead4", sunGold: "#f6d48a", sunEdge: "#e8b85a",
   },
 };

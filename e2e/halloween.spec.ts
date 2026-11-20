@@ -11,7 +11,7 @@ test("Halloween can be previewed and reached with the scene switch", async ({ pa
   await expect(page.locator("html")).toHaveAttribute("data-festival", "halloween");
   await expect(page.locator("canvas[data-weather=halloween]")).toBeVisible();
   await page.getByRole("button", { name: /^Banner theme: Halloween/ }).click();
-  await expect(page.locator("canvas[data-weather=clear]")).toBeVisible();
+  await expect(page.locator("canvas[data-weather=minor-snow]")).toBeVisible();
 });
 
 test("keyboard actions work with reduced motion", async ({ page }) => {

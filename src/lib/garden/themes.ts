@@ -6,7 +6,19 @@ import { deckDepth, hash, type Layout, PEAK, ROOF_TOP } from "./scene";
 // The site theme still decides day or night; a scene only adds a layer. Everything here is a pure
 // function of the layout and the time, so the banner can call it every frame and the tests can too.
 
-export const SCENES = ["clear", "cloudy", "rain", "storm", "snow", "fog", "spring", "halloween"] as const;
+export const SCENES = [
+  "clear",
+  "cloudy",
+  "rain",
+  "storm",
+  "snow",
+  "fog",
+  "spring",
+  "halloween",
+  "minor-snow",
+  "major-snow",
+  "winter-solstice",
+] as const;
 export type SceneName = (typeof SCENES)[number];
 
 export const SCENE_LABELS: Record<SceneName, string> = {
@@ -18,6 +30,9 @@ export const SCENE_LABELS: Record<SceneName, string> = {
   fog: "Fog",
   spring: "Lunar New Year",
   halloween: "Halloween",
+  "minor-snow": "Minor Snow",
+  "major-snow": "Major Snow",
+  "winter-solstice": "Winter Solstice",
 };
 
 export const nextScene = (s: SceneName): SceneName => SCENES[(SCENES.indexOf(s) + 1) % SCENES.length];
