@@ -54,27 +54,52 @@ function useIntroOver() {
   );
 }
 
+const WEBGL_ATTRS: WebGLContextAttributes = {
+  powerPreference: "low-power",
+  antialias: false,
+  depth: false,
+  stencil: false,
+};
+
+function subscribeWide(onChange: () => void) {
+  const wide = window.matchMedia("(min-width: 720px)");
+  wide.addEventListener("change", onChange);
+  return () => wide.removeEventListener("change", onChange);
+}
+const getWide = () => window.matchMedia("(min-width: 720px)").matches;
+
+function subscribeVisible(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+const getVisible = () => !document.hidden;
+
 /** Page ground: a slow 8x8 dither, barely lighter than the background, seen in the side gutters. */
 export function BackgroundShader() {
   const mood = useShaderMood();
   // Starting WebGL blocks the main thread for a moment. During the intro that stalls the opening circle.
   const introOver = useIntroOver();
-  if (!mood || !introOver) return null;
+  // On phones and narrow viewports the 690px rail fills the screen, so the side-gutter shader is barely visible.
+  const wide = useSyncExternalStore(subscribeWide, getWide, () => false);
+  const visible = useSyncExternalStore(subscribeVisible, getVisible, () => false);
+  if (!mood || !introOver || !wide) return null;
   return (
     <Suspense>
-    <Dithering
-      aria-hidden
-      className="shader-fade pointer-events-none fixed inset-0 -z-10"
-      colorBack={mood.colors.bg}
-      colorFront={mood.colors.grain}
-      shape="simplex"
-      type="8x8"
-      size={2}
-      scale={0.6}
-      // The E2E build draws one frame: CI renders WebGL in software, and a moving ground starves the timed tests.
-      speed={mood.still || import.meta.env.E2E_FIXTURES ? 0 : 0.15}
-      maxPixelCount={1920 * 1080}
-    />
+      <Dithering
+        aria-hidden
+        className="shader-fade pointer-events-none fixed inset-0 -z-10"
+        colorBack={mood.colors.bg}
+        colorFront={mood.colors.grain}
+        shape="simplex"
+        type="8x8"
+        size={2}
+        scale={0.6}
+        // The E2E build draws one frame: CI renders WebGL in software, and a moving ground starves the timed tests.
+        speed={mood.still || !visible || import.meta.env.E2E_FIXTURES ? 0 : 0.15}
+        minPixelRatio={1}
+        maxPixelCount={960 * 540}
+        webGlContextAttributes={WEBGL_ATTRS}
+      />
     </Suspense>
   );
 }

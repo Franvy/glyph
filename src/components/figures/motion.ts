@@ -33,7 +33,33 @@ function spring(s: Spring, target: number, dt: number, stiffness: number, dampin
     s.at += s.rate * (dt / 4);
   }
 }
-const lit = (group: Element, on: boolean) => group.querySelectorAll(".iso-solid").forEach((solid) => solid.toggleAttribute("data-lit", on));
+const prevAttr = new WeakMap<Element, Map<string, string>>();
+function setAttr(el: Element, name: string, value: string) {
+  let map = prevAttr.get(el);
+  if (!map) {
+    map = new Map();
+    prevAttr.set(el, map);
+  }
+  if (map.get(name) === value) return;
+  map.set(name, value);
+  el.setAttribute(name, value);
+}
+
+const prevLit = new WeakMap<Element, boolean>();
+function makeLit(group: Element) {
+  const solids = [...group.querySelectorAll(".iso-solid")];
+  return (on: boolean) => {
+    if (prevLit.get(group) === on) return;
+    prevLit.set(group, on);
+    for (const solid of solids) solid.toggleAttribute("data-lit", on);
+  };
+}
+
+function setOpacity(el: SVGElement, visible: boolean) {
+  const value = visible ? "1" : "0";
+  if (el.style.opacity !== value) el.style.opacity = value;
+}
+
 const parts = (svg: SVGElement, name: string) => [...svg.querySelectorAll(`[data-part="${name}"]`)];
 const part = (svg: SVGElement, name: string) => svg.querySelector(`[data-part="${name}"]`)!;
 
@@ -43,6 +69,7 @@ type Figure = { tick(dt: number): void; still(): void };
 function gtab(svg: SVGElement): Figure {
   const { P, slide: SLIDE, lift: LIFT, travel: TRAVEL } = params.gtab;
   const cards = parts(svg, "card");
+  const cardLits = cards.map(makeLit);
   const slider = part(svg, "slider");
   const keycap = part(svg, "keycap");
   const CYCLE = 3.2;
@@ -52,11 +79,11 @@ function gtab(svg: SVGElement): Figure {
   let slide = SLIDE[0];
   let press = 0;
   const draw = () => {
-    slider.setAttribute("transform", translateAlong(P, [0, slide, 0]));
-    keycap.setAttribute("transform", translateAlong(P, [0, 0, -press * TRAVEL]));
+    setAttr(slider, "transform", translateAlong(P, [0, slide, 0]));
+    setAttr(keycap, "transform", translateAlong(P, [0, 0, -press * TRAVEL]));
     cards.forEach((card, i) => {
-      card.setAttribute("transform", translateAlong(P, [0, 0, lift[i].at * LIFT]));
-      lit(card, i === pick && lift[i].at > 0.04);
+      setAttr(card, "transform", translateAlong(P, [0, 0, lift[i].at * LIFT]));
+      cardLits[i](i === pick && lift[i].at > 0.04);
     });
   };
   return {
@@ -81,6 +108,9 @@ function limnsDev(svg: SVGElement): Figure {
   const { P, stops: STOPS, rise: RISE } = params["limns-dev"];
   const slides: Element[] = [];
   parts(svg, "slide").forEach((el) => (slides[Number((el as SVGElement).dataset.index)] = el));
+  const slideSolids = slides.map((el) => el.querySelector(":scope > .iso-solid")!);
+  const slidePins = slides.map((el) => el.querySelector('[data-part="pin"]') as SVGElement);
+  const slideLitState = slides.map(() => false);
   const back = part(svg, "gantry-back");
   const gantry = part(svg, "gantry");
   const loupe = part(svg, "loupe");
@@ -93,13 +123,17 @@ function limnsDev(svg: SVGElement): Figure {
   let stop = STOPS[0];
   const draw = () => {
     const t = translateAlong(P, [x, 0, 0]);
-    back.setAttribute("transform", t);
-    gantry.setAttribute("transform", t);
-    loupe.setAttribute("transform", translateAlong(P, [0, y, 0]));
+    setAttr(back, "transform", t);
+    setAttr(gantry, "transform", t);
+    setAttr(loupe, "transform", translateAlong(P, [0, y, 0]));
     slides.forEach((el, i) => {
-      el.setAttribute("transform", translateAlong(P, [0, 0, lift[i].at * RISE]));
-      el.querySelector(":scope > .iso-solid")!.toggleAttribute("data-lit", i === stop.i && lift[i].at > 0.05);
-      (el.querySelector('[data-part="pin"]') as SVGElement).style.opacity = saved.has(i) ? "1" : "0";
+      setAttr(el, "transform", translateAlong(P, [0, 0, lift[i].at * RISE]));
+      const on = i === stop.i && lift[i].at > 0.05;
+      if (slideLitState[i] !== on) {
+        slideLitState[i] = on;
+        slideSolids[i].toggleAttribute("data-lit", on);
+      }
+      setOpacity(slidePins[i], saved.has(i));
     });
   };
   return {
@@ -129,6 +163,7 @@ function limnsCc(svg: SVGElement): Figure {
   const { P, heads: HEADS, stroke: STROKE, knob: KNOB, angles: ANGLES, home } = params["limns-cc"];
   const carriage = part(svg, "carriage");
   const rods = parts(svg, "rod");
+  const rodLits = rods.map(makeLit);
   const pointer = part(svg, "pointer");
   const printed = { chat: svg.querySelector('[data-print="chat"]') as SVGElement, image: svg.querySelector('[data-print="image"]') as SVGElement };
   const ORDER = [0, 2, 3, 1];
@@ -140,14 +175,14 @@ function limnsCc(svg: SVGElement): Figure {
   let angle = ANGLES[home];
   let shown = "image";
   const draw = () => {
-    carriage.setAttribute("transform", translateAlong(P, [x, 0, 0]));
-    pointer.setAttribute("d", lineOnTop([KNOB[0], KNOB[1]], [KNOB[0] + Math.sin(angle) * 4.6, KNOB[1] - Math.cos(angle) * 4.6], 9, P));
+    setAttr(carriage, "transform", translateAlong(P, [x, 0, 0]));
+    setAttr(pointer, "d", lineOnTop([KNOB[0], KNOB[1]], [KNOB[0] + Math.sin(angle) * 4.6, KNOB[1] - Math.cos(angle) * 4.6], 9, P));
     rods.forEach((rod, i) => {
-      rod.setAttribute("transform", i === index ? translateAlong(P, [0, 0, -stamp.at * STROKE]) : "");
-      lit(rod, i === index);
+      setAttr(rod, "transform", i === index ? translateAlong(P, [0, 0, -stamp.at * STROKE]) : "");
+      rodLits[i](i === index);
     });
-    printed.chat.style.opacity = shown === "chat" ? "1" : "0";
-    printed.image.style.opacity = shown === "image" ? "1" : "0";
+    setOpacity(printed.chat, shown === "chat");
+    setOpacity(printed.image, shown === "image");
   };
   return {
     tick(dt) {
@@ -172,9 +207,14 @@ function limnsCc(svg: SVGElement): Figure {
 function ignite(svg: SVGElement): Figure {
   const { P, stacks: STACKS, lift: LIFT, travel: TRAVEL, dial: DIAL, angles: ANGLES, home } = params.ignite;
   const crate = part(svg, "crate");
+  const crateLit = makeLit(crate);
   const keycap = part(svg, "keycap");
   const pointer = part(svg, "pointer");
-  const carts = parts(svg, "cart") as SVGElement[];
+  const carts = (parts(svg, "cart") as SVGElement[]).map((el) => ({
+    el,
+    kind: el.dataset.kind as "plugins" | "skills" | "hooks",
+    index: Number(el.dataset.index),
+  }));
   const CYCLE = 4;
   const rise = { at: 0, rate: 0 };
   let clock = 0;
@@ -183,16 +223,15 @@ function ignite(svg: SVGElement): Figure {
   let press = 0;
   let filled = 99;
   const draw = () => {
-    pointer.setAttribute("d", lineOnTop([DIAL[0], DIAL[1]], [DIAL[0] + Math.sin(angle) * 6.6, DIAL[1] - Math.cos(angle) * 6.6], 11, P));
-    keycap.setAttribute("transform", translateAlong(P, [0, 0, -press * TRAVEL]));
-    crate.setAttribute("transform", translateAlong(P, [0, 0, rise.at * LIFT]));
-    lit(crate, rise.at > 0.04);
+    setAttr(pointer, "d", lineOnTop([DIAL[0], DIAL[1]], [DIAL[0] + Math.sin(angle) * 6.6, DIAL[1] - Math.cos(angle) * 6.6], 11, P));
+    setAttr(keycap, "transform", translateAlong(P, [0, 0, -press * TRAVEL]));
+    setAttr(crate, "transform", translateAlong(P, [0, 0, rise.at * LIFT]));
+    crateLit(rise.at > 0.04);
     // Cartridges drop in one after another, in socket order: plugins, then the skill, then the hook.
     let order = 0;
     for (const cart of carts) {
-      const kind = cart.dataset.kind as "plugins" | "skills" | "hooks";
-      const used = Number(cart.dataset.index) < STACKS[pick][kind];
-      cart.style.opacity = used && order++ < filled ? "1" : "0";
+      const used = cart.index < STACKS[pick][cart.kind];
+      setOpacity(cart.el, used && order++ < filled);
     }
   };
   return {
@@ -215,9 +254,45 @@ function ignite(svg: SVGElement): Figure {
 
 const MAKERS: Record<string, (svg: SVGElement) => Figure> = { gtab, ignite, "limns-dev": limnsDev, "limns-cc": limnsCc };
 
+const active = new Set<Figure>();
+let sharedFrame = 0;
+let sharedLast = 0;
+let sharedWired = false;
+
 /** Starts every drawing on the page that has not started yet. */
 export function startFigures() {
   const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const tickAll = (now: number) => {
+    const dt = sharedLast ? Math.min((now - sharedLast) / 1000, 1 / 30) : 1 / 60;
+    sharedLast = now;
+    for (const figure of active) figure.tick(dt);
+    sharedFrame = active.size > 0 && !still.matches && !document.hidden ? requestAnimationFrame(tickAll) : 0;
+  };
+  const sync = () => {
+    if (active.size > 0 && !still.matches && !document.hidden) {
+      if (!sharedFrame) {
+        sharedLast = 0;
+        sharedFrame = requestAnimationFrame(tickAll);
+      }
+    } else if (sharedFrame) {
+      cancelAnimationFrame(sharedFrame);
+      sharedFrame = 0;
+    }
+  };
+  if (!sharedWired) {
+    sharedWired = true;
+    still.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
+  }
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      const fig = figuresByHost.get(entry.target);
+      if (!fig) continue;
+      if (entry.isIntersecting) active.add(fig);
+      else active.delete(fig);
+    }
+    sync();
+  });
   for (const host of document.querySelectorAll<HTMLElement>("[data-figure]:not([data-started])")) {
     const svg = host.querySelector("svg");
     const make = MAKERS[host.dataset.figure ?? ""];
@@ -225,24 +300,9 @@ export function startFigures() {
     host.dataset.started = "";
     const figure = make(svg);
     figure.still();
-    let frame = 0;
-    let last = 0;
-    let visible = false;
-    const tick = (now: number) => {
-      const dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
-      last = now;
-      figure.tick(dt);
-      frame = visible && !still.matches ? requestAnimationFrame(tick) : 0;
-    };
-    const run = () => {
-      if (frame || !visible || still.matches) return;
-      last = 0;
-      frame = requestAnimationFrame(tick);
-    };
-    new IntersectionObserver((entries) => {
-      visible = entries[entries.length - 1].isIntersecting;
-      run();
-    }).observe(host);
-    still.addEventListener("change", run);
+    figuresByHost.set(host, figure);
+    seen.observe(host);
   }
 }
+
+const figuresByHost = new WeakMap<Element, Figure>();

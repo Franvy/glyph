@@ -166,11 +166,14 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
     lastX = cat.x;
     const stride = STRIDE[cat.drawn];
     const strip = catSpr.firstElementChild as SVGElement | null;
-    if (stride && strip) {
-      const n = POSES[cat.drawn].frames.length;
-      strip.style.translate = `${reduce ? 0 : -(Math.floor(odometer / stride) % n) * (100 / n)}% 0`;
-    } else if (strip) strip.style.translate = "";
-    catEl.style.translate = `${snap(cat.x - cat.w / 2)}px ${-snap(cat.y)}px`;
+    if (strip) {
+      const nextStrip = stride
+        ? `${reduce ? 0 : -(Math.floor(odometer / stride) % POSES[cat.drawn].frames.length) * (100 / POSES[cat.drawn].frames.length)}% 0`
+        : "";
+      if (strip.style.translate !== nextStrip) strip.style.translate = nextStrip;
+    }
+    const nextTranslate = `${snap(cat.x - cat.w / 2)}px ${-snap(cat.y)}px`;
+    if (catEl.style.translate !== nextTranslate) catEl.style.translate = nextTranslate;
   };
 
   // ---------- the yarn ball ----------
@@ -847,16 +850,36 @@ export function mountMeiqiu(parts: MeiqiuParts): () => void {
     if (fish) fish.el.style.translate = `${snap(fish.x - 13)}px ${-snap(fish.y)}px`;
   }
 
+  let lastBallTranslate = "";
+  let lastBallStrip = "";
+  let lastThreadD = "";
   function renderBall() {
     const frame = carried ? 0 : ((Math.floor(ball.angle / (Math.PI / 4)) % 4) + 4) % 4;
     const strip = ballSpr.firstElementChild as SVGElement | null;
-    if (strip) strip.style.translate = `${-frame * 25}% 0`;
-    ballEl.style.translate = `${snap(ball.x - BALL_R)}px ${-snap(ball.y)}px`;
+    const nextStrip = `${-frame * 25}% 0`;
+    if (strip && nextStrip !== lastBallStrip) {
+      lastBallStrip = nextStrip;
+      strip.style.translate = nextStrip;
+    }
+    const nextTranslate = `${snap(ball.x - BALL_R)}px ${-snap(ball.y)}px`;
+    if (nextTranslate !== lastBallTranslate) {
+      lastBallTranslate = nextTranslate;
+      ballEl.style.translate = nextTranslate;
+    }
     if (reduce) return;
-    // the thread: the last stretch of the ball's path
-    trail.push([snap(ball.x), snap(H - ball.y - BALL_R)]);
+    // the thread: the last stretch of the ball's path; skip DOM writes once the trail has collapsed to rest.
+    const tx = snap(ball.x);
+    const ty = snap(H - ball.y - BALL_R);
+    const first = trail[0];
+    const lastPt = trail[trail.length - 1];
+    if (trail.length === 26 && first[0] === tx && first[1] === ty && lastPt[0] === tx && lastPt[1] === ty) return;
+    trail.push([tx, ty]);
     if (trail.length > 26) trail.shift();
-    threadPath.setAttribute("d", `M${trail.map((p) => p.join(" ")).join("L")}`);
+    const d = `M${trail.map((p) => `${p[0]} ${p[1]}`).join("L")}`;
+    if (d !== lastThreadD) {
+      lastThreadD = d;
+      threadPath.setAttribute("d", d);
+    }
   }
 
   // ---------- the loop: only while the footer is on screen and the tab is visible ----------
