@@ -122,10 +122,10 @@ html[data-intro] {
   --intro-wait: 1.3s;
 }
 
-/* The circle's radius. Registered, so it animates; both layers below read it. */
+/* The circle's radius. Registered, so it animates; non-inheriting so it never forces full-tree style recalc. */
 @property --intro-r {
   syntax: "<length>";
-  inherits: true;
+  inherits: false;
   initial-value: 0px;
 }
 
@@ -171,9 +171,6 @@ html[data-intro] {
   }
 }
 
-html[data-intro="play"] {
-  animation: intro-open 1.8s both;
-}
 /* Two fixed layers over the page, so the circle sits in the middle of the screen, not of the whole page.
    ::before is the ground outside the circle; ::after is the veil inside it. They catch the mouse until the
    intro is done, so nothing under the veil opens. A click on them still rings the first-click sound. */
@@ -187,11 +184,14 @@ html[data-intro="play"] body::after {
 html[data-intro="play"] body::before {
   background: var(--bg);
   mask: radial-gradient(circle at 50% 50%, transparent var(--intro-r), #000 calc(var(--intro-r) + 0.5px));
+  animation: intro-open 1.8s both;
 }
 html[data-intro="play"] body::after {
   background: var(--ink);
   mask: radial-gradient(circle at 50% 50%, #000 var(--intro-r), transparent calc(var(--intro-r) + 0.5px));
-  animation: intro-veil 2.3s both;
+  animation:
+    intro-open 1.8s both,
+    intro-veil 2.3s both;
 }
 
 /* No body background: the dither shader sits behind it at z -10, on the html ground. */
@@ -384,7 +384,7 @@ body {
   .cta-icon > svg {
     transition: none;
   }
-  .status-dot {
+  .status-bars i {
     animation: none !important;
     transition: none !important;
   }
@@ -432,7 +432,7 @@ body {
 .project-screen,
 .project-empty,
 .project-art,
-.project-link,
+.project-name,
 .chip,
 .skill,
 .skill-mark {
@@ -440,34 +440,58 @@ body {
     border-color 0.18s var(--ease-out),
     background-color 0.18s var(--ease-out),
     color 0.18s var(--ease-out),
+    text-decoration-color 0.18s var(--ease-out),
     translate 0.25s var(--ease-reveal);
 }
-
-/* The status dot fills as the project grows: an open ring (dev), half (beta), full (live).
-   Only live is blue, and only live moves by itself. */
-.status-dot {
-  width: 7px;
-  height: 7px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  /* Centred in the line box, the dot sits about half a pixel above the middle of Paper Mono's capitals. */
-  translate: 0 0.5px;
+.project a[href] .project-name {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
 }
-/* Live: an indicator light. It glows still, and every 7s it blinks twice, like the activity light on a port.
+
+/* Project status: three vertical signal bars encode maturity — 3/3 live, 2/3 beta, 1/3 dev.
+   Only live takes the accent, and only live blinks. */
+.status {
+  --bar-off: var(--line);
+}
+:root[data-theme="light"] .status {
+  --bar-off: var(--edge);
+}
+.status[data-status="live"] {
+  color: var(--ink);
+}
+.status[data-status="beta"] {
+  color: var(--dim);
+}
+.status[data-status="dev"] {
+  color: var(--mute);
+}
+.status-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.status-bars i {
+  display: block;
+  width: 2px;
+  height: 8px;
+  background: var(--bar-off);
+  transition: background-color 0.2s var(--ease-out);
+}
+/* Live: all three bars lit in accent; the rightmost bar blinks twice every 7s like a port activity light.
    --blink-at (set per project) keeps two live cards from blinking together. */
-.status-dot[data-status="live"] {
+.status[data-status="live"] .status-bars i {
   background: var(--accent);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.status[data-status="live"] .status-bars i:nth-child(3) {
   animation: status-blink 7s ease-in-out var(--blink-at, 0s) infinite;
 }
-.status-dot[data-status="beta"] {
-  box-shadow: inset 0 0 0 1px var(--dim);
-  background: linear-gradient(90deg, var(--dim) 50%, transparent 50%);
-  transition: rotate 0.5s var(--ease-reveal);
+.status[data-status="beta"] .status-bars i:nth-child(-n + 2) {
+  background: var(--body);
 }
-/* Dev: the beta ring with nothing filled in yet. */
-.status-dot[data-status="dev"] {
-  box-shadow: inset 0 0 0 1px var(--dim);
+.status[data-status="dev"] .status-bars i:first-child {
+  background: var(--mute);
 }
 @keyframes status-blink {
   0%,
@@ -514,18 +538,18 @@ body {
     border-color: var(--edge);
   }
   .project a:hover .project-screen {
-    translate: 0 -4px;
+    translate: 0 4px;
     border-color: var(--accent-2);
   }
-  .project a:hover .status-dot[data-status="beta"] {
-    rotate: 180deg;
+  .project a:hover .status[data-status="beta"] .status-bars i:nth-child(3) {
+    background: var(--dim);
   }
   .project a:hover .project-empty,
   .project a:hover .project-art {
     color: var(--body);
   }
-  .project-link:hover {
-    color: var(--accent);
+  .project a[href]:hover .project-name {
+    text-decoration-color: var(--accent);
   }
   .chip:hover {
     background: var(--card-hi);

@@ -27,24 +27,22 @@ test("the Ignite card shows its drawing and a Dev status", async ({ page }) => {
   await ignite.scrollIntoViewIfNeeded();
   await expect(ignite.locator('[data-figure="ignite"] svg')).toBeVisible();
   await expect(ignite).toContainText("Dev");
-  // Its source is not public yet: a greyed-out GitHub mark that links nowhere.
-  await expect(ignite.getByRole("img", { name: "GitHub: not public yet" })).toBeVisible();
-  await expect(ignite.getByRole("link", { name: "GitHub", exact: true })).toHaveCount(0);
+  // Its source is not public yet: the card anchor has no href.
+  await expect(ignite.locator("a")).not.toHaveAttribute("href");
 });
 
-test("a project card shows a mark for each of its links: the website, GitHub or both", async ({ page }) => {
+test("each project card links directly to its website or GitHub", async ({ page }) => {
   await page.goto("/");
-  // The sample projects in src/lib/site.ts: limns.cc and limns.dev have only a website, Gtab has only GitHub.
-  for (const [name, href] of [["limns.cc", "https://limns.cc"], ["limns.dev", "https://limns.dev"]]) {
-    const siteOnly = page.locator(".project", { hasText: name });
-    await siteOnly.scrollIntoViewIfNeeded(); // client:visible
-    await expect(siteOnly.getByRole("link", { name: "Website", exact: true })).toHaveAttribute("href", href);
-    await expect(siteOnly.getByRole("link", { name: "GitHub", exact: true })).toHaveCount(0);
+  // The sample projects in src/lib/site.ts: limns.cc and limns.dev link to their site, Gtab links to GitHub.
+  for (const [name, href] of [
+    ["limns.cc", "https://limns.cc"],
+    ["limns.dev", "https://limns.dev"],
+    ["Gtab", "https://github.com/Franvy/gtab"],
+  ]) {
+    const card = page.locator(".project", { hasText: name });
+    await card.scrollIntoViewIfNeeded(); // client:visible
+    await expect(card.locator("a")).toHaveAttribute("href", href);
   }
-  const githubOnly = page.locator(".project", { hasText: "Gtab" });
-  await githubOnly.scrollIntoViewIfNeeded();
-  await expect(githubOnly.getByRole("link", { name: "Website", exact: true })).toHaveCount(0);
-  await expect(githubOnly.getByRole("link", { name: "GitHub", exact: true })).toHaveAttribute("href", "https://github.com/Franvy/gtab");
 });
 
 test("the contact buttons: book an intro call on Cal.com, or send an email", async ({ page }) => {

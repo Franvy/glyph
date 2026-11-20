@@ -21,7 +21,6 @@ test("prose is in Inter, and the frame stays in Paper Mono", async ({ page }) =>
   await page.goto("/");
   expect(await family("h1")).toMatch(/Inter/);
   expect(await family("#about p")).toMatch(/Inter/);
-  expect(await family(".project p")).toMatch(/Inter/);
   expect(await family("h2#projects")).toMatch(/Paper Mono/);
   expect(await family(".project h3")).toMatch(/Paper Mono/);
   expect(await family("#contributions figure")).toMatch(/Paper Mono/);

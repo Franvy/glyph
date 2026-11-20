@@ -683,9 +683,28 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       g.yarn.x = Math.min(g.yarn.x, l.spots.maxX);
     };
 
-    const render = () => {
+    const setData = (key: string, value: string | null) => {
+      if (value === null) {
+        if (key in canvas.dataset) delete canvas.dataset[key];
+      } else if (canvas.dataset[key] !== value) {
+        canvas.dataset[key] = value;
+      }
+    };
+    const pressedButtons = {
+      house: wrap.querySelector<HTMLElement>('[data-garden-action="house"]'),
+      pumpkin: wrap.querySelector<HTMLElement>('[data-garden-action="pumpkin"]'),
+      brazier: wrap.querySelector<HTMLElement>('[data-garden-action="brazier"]'),
+      hearth: wrap.querySelector<HTMLElement>('[data-garden-action="hearth"]'),
+    };
+    const setPressed = (btn: HTMLElement | null, pressed: boolean) => {
+      if (!btn) return;
+      const value = String(pressed);
+      if (btn.getAttribute("aria-pressed") !== value) btn.setAttribute("aria-pressed", value);
+    };
+
+    const render = (cachedHit?: ReturnType<typeof hits>) => {
       if (!g) return;
-      const hit = hits(g, night);
+      const hit = cachedHit ?? hits(g, night);
       let cat = g.cat;
       if (still) cat = { ...cat, mode: hit.cat ? "happy" : cat.mode };
       if (g.time < g.petUntil) cat = { ...cat, mode: "happy" };
@@ -698,32 +717,32 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         if (stepNo >= FADE_STEPS) g.fade = null;
         else dither(ctx, g.fade.from, stepNo);
       }
-      canvas.dataset.houseWarm = String(g.houseWarm);
-      wrap.querySelector('[data-garden-action="house"]')?.setAttribute("aria-pressed", String(g.houseWarm));
-      canvas.dataset.crackersPopped = String(g.popped);
-      canvas.dataset.fireworks = String(g.fireworks.length + g.trails.length);
-      canvas.dataset.yarnX = String(Math.round(g.yarn.x));
-      canvas.dataset.pumpkinLit = String(g.pumpkinLit);
-      canvas.dataset.ghost = String(!!g.ghost && (still || g.time - g.ghost.born < 1.6));
-      wrap.querySelector('[data-garden-action="pumpkin"]')?.setAttribute("aria-pressed", String(g.pumpkinLit));
-      canvas.dataset.brazierFanned = String(g.brazierFanned);
-      canvas.dataset.persimmonsDropped = String(g.persimmonsDropped);
-      wrap.querySelector('[data-garden-action="brazier"]')?.setAttribute("aria-pressed", String(g.brazierFanned));
-      canvas.dataset.snowCatStage = String(g.snowCatStage);
-      canvas.dataset.icicleGlint = String(g.icicleGlintAt !== null && (still || g.time - g.icicleGlintAt < ICICLE_GLINT_FOR));
-      canvas.dataset.hearthStoked = String(g.hearthStoked);
-      canvas.dataset.wintersweetBlooms = String(g.wintersweetBlooms);
-      wrap.querySelector('[data-garden-action="hearth"]')?.setAttribute("aria-pressed", String(g.hearthStoked));
-      canvas.dataset.catX = String(Math.round((g.cat.x + 8) * CELL));
-      canvas.dataset.catY = String(Math.round((g.l.ground - 6) * CELL));
+      setData("houseWarm", String(g.houseWarm));
+      setPressed(pressedButtons.house, g.houseWarm);
+      setData("crackersPopped", String(g.popped));
+      setData("fireworks", String(g.fireworks.length + g.trails.length));
+      setData("yarnX", String(Math.round(g.yarn.x)));
+      setData("pumpkinLit", String(g.pumpkinLit));
+      setData("ghost", String(!!g.ghost && (still || g.time - g.ghost.born < 1.6)));
+      setPressed(pressedButtons.pumpkin, g.pumpkinLit);
+      setData("brazierFanned", String(g.brazierFanned));
+      setData("persimmonsDropped", String(g.persimmonsDropped));
+      setPressed(pressedButtons.brazier, g.brazierFanned);
+      setData("snowCatStage", String(g.snowCatStage));
+      setData("icicleGlint", String(g.icicleGlintAt !== null && (still || g.time - g.icicleGlintAt < ICICLE_GLINT_FOR)));
+      setData("hearthStoked", String(g.hearthStoked));
+      setData("wintersweetBlooms", String(g.wintersweetBlooms));
+      setPressed(pressedButtons.hearth, g.hearthStoked);
+      setData("catX", String(Math.round((g.cat.x + 8) * CELL)));
+      setData("catY", String(Math.round((g.l.ground - 6) * CELL)));
       if (g.activity) {
-        canvas.dataset.activity = g.activity.id;
-        canvas.dataset.activityFrame = String(g.activity.frame);
+        setData("activity", g.activity.id);
+        setData("activityFrame", String(g.activity.frame));
       } else {
-        delete canvas.dataset.activity;
-        delete canvas.dataset.activityFrame;
+        setData("activity", null);
+        setData("activityFrame", null);
       }
-      canvas.dataset.catMode = scene === "storm" ? "hidden" : cat.mode;
+      setData("catMode", scene === "storm" ? "hidden" : cat.mode);
     };
 
     /** False when two bursts are already up. */
@@ -1199,13 +1218,17 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       return cleanup;
     }
 
-    // Only spend frames while the banner is on screen.
+    // Only spend frames while the banner is on screen. Cap the pixel scene at ~30fps so 120Hz displays
+    // do not repaint 222x74 cells four times as often as the pixel steps move.
+    const FRAME_MS = 1000 / 32;
     let frame = 0;
     let prev = 0;
     const loop = (now: number) => {
-      tick(prev ? Math.min(now - prev, 100) / 1000 : 0);
-      prev = now;
-      render();
+      if (!prev || now - prev >= FRAME_MS) {
+        tick(prev ? Math.min(now - prev, 100) / 1000 : 0);
+        prev = now;
+        render();
+      }
       frame = requestAnimationFrame(loop);
     };
     let visible = false;

@@ -1,6 +1,6 @@
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, type LucideIcon, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
-import { isStale, type Weather, type WeatherKind } from "@/lib/weather";
+import { isStale, type Weather, type WeatherKind } from "@/lib/weather-client";
 
 /** Open-Meteo updates every 15 minutes, and /api/weather caches as long. */
 const REFRESH_MS = 15 * 60_000;
