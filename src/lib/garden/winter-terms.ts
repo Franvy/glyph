@@ -1,15 +1,21 @@
-import { chimneyTop, hash, ROOF_TOP, type Layout } from "./scene";
+import { chimneyTop, hash, PEAK, ROOF_TOP, WALL, type Layout } from "./scene";
 import type { Key } from "./palette";
 import type { Pixel, Pose } from "./sprites";
 import type { SceneName } from "./themes";
 
-// Paper: "Banner · 煤球的花园 · 二十四节气" (小雪 / 大雪 / 冬至 specs).
+// Paper: "Banner · 煤球的花园 · 二十四节气" (小雪 / 大雪 / 冬至 / 小寒 / 大寒 specs).
 // All sprites and coordinates are in integer 3 px grid cells.
 
-export type WinterTermScene = "minor-snow" | "major-snow" | "winter-solstice";
+export type WinterTermScene = "minor-snow" | "major-snow" | "winter-solstice" | "minor-cold" | "major-cold";
 
 export function isWinterTerm(scene: SceneName): scene is WinterTermScene {
-  return scene === "minor-snow" || scene === "major-snow" || scene === "winter-solstice";
+  return (
+    scene === "minor-snow" ||
+    scene === "major-snow" ||
+    scene === "winter-solstice" ||
+    scene === "minor-cold" ||
+    scene === "major-cold"
+  );
 }
 
 export interface Box {
@@ -787,6 +793,572 @@ export function winterSolsticeDecor(
 
   // Solstice meteor.
   if (state.meteor) put(meteorFrame(state.meteor, t, still), 0, 0);
+
+  return out;
+}
+
+
+// ============================================================================
+// 小寒 · Minor Cold
+// ============================================================================
+
+export const CAPELET_ROW: Record<Pose, number> = {
+  idle: 9,
+  blink: 9,
+  walk1: 9,
+  walk2: 9,
+  happy: 9,
+  alert: 10,
+  sleep: 10,
+};
+
+/** 14 × 4 fleece-trimmed slate-teal capelet with brass clasp. */
+export const FLEECE_CAPELET: Pixel[] = rects([
+  [1, 0, 12, 1, "snow"],
+  [6, 0, 2, 1, "chestnutGold"],
+  [0, 1, 14, 1, "cape"],
+  [2, 1, 3, 1, "celadon"],
+  [9, 1, 3, 1, "celadon"],
+  [0, 2, 14, 1, "capeDark"],
+  [1, 2, 1, 1, "snow"],
+  [12, 2, 1, 1, "snow"],
+  [0, 3, 2, 1, "cape"],
+  [12, 3, 2, 1, "cape"],
+]);
+
+/** 9 × 8 steaming cracked 糖炒栗子 floated on pet. */
+export const ROASTED_CHESTNUT_TOKEN: Pixel[] = rects([
+  [3, 0, 1, 1, "zz"],
+  [6, 0, 1, 1, "zz"],
+  [4, 1, 1, 1, "snow"],
+  [4, 2, 1, 1, "chestnut"],
+  [2, 3, 5, 4, "chestnut"],
+  [1, 4, 7, 3, "chestnut"],
+  [2, 7, 5, 1, "chestnut"],
+  [1, 6, 7, 1, "chestnutDark"],
+  [2, 7, 5, 1, "chestnutDark"],
+  [3, 4, 3, 2, "chestnutGold"],
+  [4, 4, 2, 1, "cream"],
+]);
+
+const NARCISSUS_LEAVES: Pixel[] = rects([
+  [3, 2, 1, 5, "celadon"],
+  [6, 1, 1, 6, "celadon"],
+  [8, 3, 1, 4, "celadon"],
+  [4, 4, 1, 3, "celadon"],
+  [9, 4, 1, 3, "celadon"],
+  [2, 4, 1, 3, "celadonDark"],
+  [7, 4, 1, 3, "celadonDark"],
+]);
+
+const NARCISSUS_DAY_HALO: Pixel[] = rects([
+  [1, 1, 3, 3, "rime"],
+  [5, 0, 3, 3, "rime"],
+  [8, 2, 3, 3, "rime"],
+]);
+
+const NARCISSUS_FLOWERS_AND_DISH: Pixel[] = rects([
+  [2, 1, 1, 3, "snow"],
+  [1, 2, 3, 1, "snow"],
+  [6, 0, 1, 3, "snow"],
+  [5, 1, 3, 1, "snow"],
+  [9, 2, 1, 3, "snow"],
+  [8, 3, 3, 1, "snow"],
+  [2, 2, 1, 1, "chestnutGold"],
+  [6, 1, 1, 1, "chestnutGold"],
+  [9, 3, 1, 1, "chestnutGold"],
+  [2, 7, 2, 1, "glacialEdge"],
+  [5, 7, 2, 1, "glacialEdge"],
+  [8, 7, 2, 1, "glacialEdge"],
+  [0, 8, 12, 1, "celadonHi"],
+  [1, 9, 10, 1, "celadon"],
+  [2, 10, 8, 1, "celadonDark"],
+]);
+
+const NEST_STAGE_1: Pixel[] = rects([
+  [2, 8, 8, 2, "wood3"],
+  [1, 9, 10, 1, "wood3"],
+  [3, 10, 6, 1, "wood3"],
+  [3, 9, 5, 1, "twigDark"],
+  [0, 8, 2, 1, "twigDark"],
+  [10, 8, 2, 1, "twigDark"],
+  [2, 8, 2, 1, "glacial"],
+  [8, 8, 2, 1, "glacial"],
+  // Magpie 1
+  [8, 2, 3, 3, "magpie"],
+  [9, 4, 4, 3, "magpie"],
+  [8, 5, 3, 2, "snow"],
+  [10, 4, 2, 1, "snow"],
+  [9, 3, 1, 1, "snow"],
+  [12, 5, 2, 1, "g4"],
+  [13, 6, 2, 1, "g4"],
+  [14, 7, 2, 1, "g4"],
+  [7, 3, 1, 1, "zz"],
+]);
+
+const NEST_STAGE_2: Pixel[] = rects([
+  [1, 7, 10, 3, "wood3"],
+  [0, 8, 12, 2, "wood3"],
+  [2, 10, 8, 1, "wood3"],
+  [2, 8, 8, 2, "twigDark"],
+  [3, 7, 6, 1, "bamboo"],
+  [1, 8, 2, 1, "glacial"],
+  [9, 8, 2, 1, "glacial"],
+  // Magpie 1
+  [9, 2, 3, 3, "magpie"],
+  [10, 4, 4, 3, "magpie"],
+  [9, 5, 3, 2, "snow"],
+  [11, 4, 2, 1, "snow"],
+  [10, 3, 1, 1, "snow"],
+  [13, 5, 2, 1, "g4"],
+  [14, 6, 2, 1, "g4"],
+  [8, 3, 1, 1, "zz"],
+]);
+
+const NEST_STAGE_3: Pixel[] = [
+  ...NEST_STAGE_2,
+  ...rects([
+    // Second magpie arrives on left rim
+    [2, 3, 3, 3, "magpie"],
+    [1, 4, 4, 3, "magpie"],
+    [2, 5, 3, 2, "snow"],
+    [3, 4, 1, 1, "snow"],
+    [0, 5, 2, 1, "g4"],
+    [0, 6, 1, 1, "g4"],
+    [5, 4, 1, 1, "zz"],
+  ]),
+];
+
+const NARROW_NEST_STAGE_1: Pixel[] = rects([
+  [1, 6, 8, 2, "wood3"],
+  [2, 8, 6, 1, "wood3"],
+  [2, 7, 6, 1, "twigDark"],
+  [6, 1, 3, 3, "magpie"],
+  [7, 3, 4, 3, "magpie"],
+  [6, 4, 3, 2, "snow"],
+  [10, 4, 2, 1, "g4"],
+]);
+
+const NARROW_NEST_STAGE_3: Pixel[] = [
+  ...NARROW_NEST_STAGE_1,
+  ...rects([
+    [3, 6, 5, 1, "bamboo"],
+    [1, 2, 3, 3, "magpie"],
+    [1, 4, 3, 2, "snow"],
+    [0, 4, 1, 1, "g4"],
+  ]),
+];
+
+const DIAMOND_STAR: Pixel[] = rects([
+  [4, 0, 1, 9, "glacial"],
+  [0, 4, 9, 1, "glacial"],
+  [2, 2, 1, 1, "glacial"],
+  [6, 2, 1, 1, "glacial"],
+  [2, 6, 1, 1, "glacial"],
+  [6, 6, 1, 1, "glacial"],
+  [4, 3, 1, 3, "glint"],
+  [3, 4, 3, 1, "glint"],
+]);
+
+export type NestStage = 1 | 2 | 3;
+export const DIAMOND_STAR_FOR = 1.0;
+export const ICE_STREAK_FOR = 4.0;
+export const ICE_GLIDE_FOR = 0.85;
+
+export interface DiamondStar {
+  x: number;
+  y: number;
+  born: number;
+}
+
+export interface FallingFeather {
+  x: number;
+  y: number;
+  born: number;
+}
+
+export function iceMirrorBox(l: Layout): Box {
+  const wide = l.fence !== null;
+  const w = wide ? 26 : 14;
+  const x = wide ? Math.max(2, l.bowl - 46) : Math.max(2, l.bowl - 22);
+  return { x, y: l.ground - 3, w, h: 3 };
+}
+
+export function magpieNestBox(l: Layout): Box {
+  if (l.fence) return { x: l.fence.x + l.fence.w - 15, y: l.ground - 19, w: 16, h: 11 };
+  return { x: Math.max(2, l.house.x + 2), y: l.ground - ROOF_TOP - 2, w: 12, h: 9 };
+}
+
+export function narcissusBox(l: Layout): Box {
+  return { x: l.bowl - 6, y: l.ground - 11, w: 12, h: 11 };
+}
+
+/** Stages 1 -> 2 -> 3; extra taps stay at 3 (magpie pair settled). */
+export function nextNestStage(stage: NestStage): NestStage {
+  return stage === 1 ? 2 : 3;
+}
+
+/** At most one diamond-dust sky star active at once (1.0 s). */
+export function launchDiamondStar(current: DiamondStar | null, l: Layout, x: number, y: number, t: number): DiamondStar {
+  if (current && t - current.born < DIAMOND_STAR_FOR) return current;
+  return {
+    x: Math.max(6, Math.min(l.w - 7, Math.round(x))),
+    y: Math.max(6, Math.min(l.ground - 26, Math.round(y))),
+    born: t,
+  };
+}
+
+export function minorColdDecor(
+  l: Layout,
+  night: boolean,
+  t: number,
+  state: {
+    nestStage: NestStage;
+    streakBorn: number | null;
+    star: DiamondStar | null;
+    feathers: readonly FallingFeather[];
+  },
+  still = false,
+): Pixel[] {
+  const out: Pixel[] = [];
+  const put = (dots: readonly Pixel[], ox: number, oy: number) => {
+    for (const [x, y, k] of dots) out.push([x + ox, y + oy, k]);
+  };
+  const G = l.ground;
+  const peak = l.house.x + PEAK;
+
+  // Window frost fern corners overlaid on the glass panes.
+  const fernKey: Key = night ? "glacial" : "glacialEdge";
+  for (const wx of [peak - 12, peak + 10]) {
+    out.push([wx, G - 12, fernKey], [wx + 2, G - 8, fernKey]);
+    if (night) out.push([wx + 1, G - 12, "glint"]);
+  }
+  const cy = G - WALL - 11 + 5;
+  out.push([peak - 2, cy - 1, fernKey], [peak + 2, cy + 1, fernKey]);
+
+  // Magpie & twig nest (1..3 stages).
+  const nest = magpieNestBox(l);
+  if (l.fence) {
+    const sprite = state.nestStage === 1 ? NEST_STAGE_1 : state.nestStage === 2 ? NEST_STAGE_2 : NEST_STAGE_3;
+    put(sprite, nest.x, nest.y);
+  } else {
+    put(state.nestStage >= 3 ? NARROW_NEST_STAGE_3 : NARROW_NEST_STAGE_1, nest.x, nest.y);
+  }
+
+  // Falling frost feather (5 cells/s).
+  if (!still) {
+    for (const f of state.feathers) {
+      const age = t - f.born;
+      const y = Math.round(f.y + age * 5);
+      if (y < G) {
+        const dx = Math.round(Math.sin(age * 6) * 1.5);
+        out.push([f.x + dx, y, "snow"], [f.x + dx + 1, y + 1, "g4"]);
+      }
+    }
+  }
+
+  // Celadon 水仙 dish by the doorstep (with cool contrast halo in daylight).
+  const dish = narcissusBox(l);
+  put(NARCISSUS_LEAVES, dish.x, dish.y);
+  if (!night) put(NARCISSUS_DAY_HALO, dish.x, dish.y);
+  put(NARCISSUS_FLOWERS_AND_DISH, dish.x, dish.y);
+
+  // Ice mirror skate streak when active (or static streak in reduced motion).
+  const ice = iceMirrorBox(l);
+  if (still) {
+    for (let dx = 2; dx < Math.min(ice.w - 3, 10); dx++) out.push([ice.x + dx, ice.y + 1, "glint"]);
+  } else if (state.streakBorn !== null) {
+    const age = t - state.streakBorn;
+    if (age >= 0 && age < ICE_STREAK_FOR) {
+      const k: Key = age < 2.2 ? "glint" : "snow";
+      const len = Math.min(ice.w - 4, 10);
+      for (let dx = 2; dx < 2 + len; dx++) out.push([ice.x + dx, ice.y + 1, k]);
+      if (age < 0.6) out.push([ice.x + 8, ice.y - 1, "glint"], [ice.x + 10, ice.y - 2, "snow"]);
+    }
+  }
+
+  // Ambient diamond-dust motes at night (4 still dots in reduced motion).
+  if (night) {
+    for (let i = 0; i < 4; i++) {
+      const dx = Math.floor(((i + 0.4) / 4) * (l.w - 20)) + 10;
+      const dy = 10 + (i % 3) * 8;
+      if (still || Math.sin(t * 2.4 + i * 1.9) > 0.1) out.push([dx, dy, "glacial"]);
+    }
+  }
+
+  // Sky-click diamond-dust 9 × 9 star.
+  if (state.star) {
+    const age = still ? 0.3 : t - state.star.born;
+    if (age >= 0 && age < DIAMOND_STAR_FOR) {
+      put(DIAMOND_STAR, state.star.x - 4, state.star.y - 4);
+      out.push([state.star.x - 6, state.star.y + 5, "glacial"], [state.star.x + 6, state.star.y + 4, "glacial"]);
+    }
+  }
+
+  return out;
+}
+
+// ============================================================================
+// 大寒 · Major Cold
+// ============================================================================
+
+export const VEST_ROW: Record<Pose, number> = {
+  idle: 9,
+  blink: 9,
+  walk1: 9,
+  walk2: 9,
+  happy: 9,
+  alert: 10,
+  sleep: 10,
+};
+
+/** 12 × 4 quilted vermilion vest (小棉袄) with cream fleece trim & gold frog-buttons. */
+export const QUILTED_VEST: Pixel[] = rects([
+  [0, 0, 12, 1, "snow"],
+  [0, 3, 12, 1, "snow"],
+  [5, 0, 2, 1, "hawthorn"],
+  [0, 1, 12, 2, "hawthorn"],
+  [3, 1, 1, 1, "hawthornDark"],
+  [8, 1, 1, 1, "hawthornDark"],
+  [0, 2, 1, 1, "hawthornDark"],
+  [11, 2, 1, 1, "hawthornDark"],
+  [5, 1, 2, 1, "steamerGold"],
+  [5, 2, 2, 1, "steamerGold"],
+]);
+
+/** 9 × 9 glazed 冰糖葫芦 skewer floated on pet. */
+export const HAWTHORN_SKEWER_TOKEN: Pixel[] = rects([
+  [1, 7, 1, 1, "steamerGold"],
+  [2, 6, 1, 1, "steamerGold"],
+  [7, 1, 1, 1, "steamerGold"],
+  [2, 5, 2, 2, "hawthorn"],
+  [4, 3, 2, 2, "hawthorn"],
+  [6, 1, 2, 2, "hawthorn"],
+  [3, 6, 1, 1, "hawthornDark"],
+  [5, 4, 1, 1, "hawthornDark"],
+  [7, 2, 1, 1, "hawthornDark"],
+  [2, 5, 1, 1, "glint"],
+  [4, 3, 1, 1, "glint"],
+  [6, 1, 1, 1, "glint"],
+  [1, 2, 1, 1, "snow"],
+  [7, 6, 1, 1, "snow"],
+]);
+
+const BAMBOO_BROOM: Pixel[] = rects([
+  [7, 0, 1, 2, "steamerGold"],
+  [6, 2, 1, 2, "steamerGold"],
+  [5, 4, 1, 2, "steamerGold"],
+  [4, 6, 1, 1, "steamerGold"],
+  [8, 0, 1, 1, "strawDark"],
+  [7, 2, 1, 1, "strawDark"],
+  [6, 4, 1, 1, "strawDark"],
+  [2, 7, 3, 1, "hawthorn"],
+  [2, 8, 3, 1, "straw"],
+  [1, 9, 4, 1, "straw"],
+  [0, 10, 6, 2, "straw"],
+  [1, 11, 1, 1, "strawDark"],
+  [3, 11, 1, 1, "strawDark"],
+  [5, 11, 1, 1, "strawDark"],
+  [2, 10, 1, 1, "steamerGold"],
+  [4, 10, 1, 1, "steamerGold"],
+]);
+
+const HAWTHORN_POST_BASE: Pixel[] = rects([
+  [4, 9, 2, 5, "pole"],
+  [2, 5, 6, 4, "straw"],
+  [2, 6, 6, 1, "strawDark"],
+  [2, 8, 6, 1, "strawDark"],
+  [2, 7, 6, 1, "hawthorn"],
+]);
+
+const HAWTHORN_STICKS: readonly Pixel[][] = [
+  // Center stick
+  rects([
+    [5, 4, 1, 1, "steamerGold"],
+    [4, 0, 2, 2, "hawthorn"],
+    [4, 2, 2, 2, "hawthorn"],
+    [5, 1, 1, 1, "hawthornDark"],
+    [5, 3, 1, 1, "hawthornDark"],
+    [4, 0, 1, 1, "glint"],
+    [4, 2, 1, 1, "glint"],
+  ]),
+  // Left stick
+  rects([
+    [2, 4, 1, 1, "steamerGold"],
+    [0, 1, 2, 2, "hawthorn"],
+    [1, 3, 2, 2, "hawthorn"],
+    [1, 2, 1, 1, "hawthornDark"],
+    [0, 1, 1, 1, "glint"],
+    [1, 3, 1, 1, "glint"],
+  ]),
+  // Right stick
+  rects([
+    [7, 4, 1, 1, "steamerGold"],
+    [8, 1, 2, 2, "hawthorn"],
+    [7, 3, 2, 2, "hawthorn"],
+    [9, 2, 1, 1, "hawthornDark"],
+    [8, 1, 1, 1, "glint"],
+    [7, 3, 1, 1, "glint"],
+  ]),
+];
+
+const STEAMER_BASE: Pixel[] = rects([
+  [2, 3, 7, 2, "cakeEdge"],
+  [3, 3, 5, 2, "snow"],
+  [3, 3, 1, 1, "hawthorn"],
+  [5, 4, 1, 1, "hawthorn"],
+  [7, 3, 1, 1, "hawthorn"],
+  [1, 5, 9, 1, "steamerGold"],
+  [1, 8, 9, 1, "steamerGold"],
+  [1, 6, 9, 1, "straw"],
+  [1, 7, 9, 1, "strawDark"],
+  [2, 9, 7, 1, "strawDark"],
+  [0, 6, 1, 1, "strawDark"],
+  [10, 6, 1, 1, "strawDark"],
+]);
+
+const STEAMER_STEAM: readonly Pixel[][] = [
+  [[3, 1, "zz"], [7, 2, "zz"], [4, 2, "snow"]],
+  [[3, 0, "zz"], [7, 1, "zz"], [4, 1, "snow"], [6, 2, "snow"]],
+  [[2, 0, "zz"], [8, 0, "zz"], [5, 1, "snow"], [7, 2, "snow"]],
+];
+
+export type HawthornCount = 1 | 2 | 3;
+export const COLD_GUST_FOR = 1.1;
+export const SWEEP_DUST_FOR = 0.7;
+
+export interface ColdGust {
+  x: number;
+  y: number;
+  born: number;
+}
+
+export function broomBox(l: Layout): Box {
+  if (l.fence) return { x: Math.max(2, l.fence.x - 5), y: l.ground - 12, w: 9, h: 12 };
+  return { x: Math.max(2, l.house.x - 2), y: l.ground - 12, w: 9, h: 12 };
+}
+
+export function hawthornPostBox(l: Layout): Box {
+  const x = l.fence ? Math.max(2, l.bowl - 38) : Math.max(2, l.house.x - 28);
+  return { x, y: l.ground - 14, w: 10, h: 14 };
+}
+
+export function steamerBox(l: Layout): Box {
+  return { x: l.bowl - 5, y: l.ground - 10, w: 11, h: 10 };
+}
+
+/** Plucking cycles 3 -> 2 -> 1 -> restocked (3). */
+export function pluckHawthorn(remaining: HawthornCount): HawthornCount {
+  return remaining === 3 ? 2 : remaining === 2 ? 1 : 3;
+}
+
+/** At most one year-end north-wind gust in flight (1.1 s). */
+export function launchColdGust(current: ColdGust | null, l: Layout, x: number, y: number, t: number): ColdGust {
+  if (current && t - current.born < COLD_GUST_FOR) return current;
+  return {
+    x: Math.max(12, Math.min(l.w - 16, Math.round(x))),
+    y: Math.max(6, Math.min(l.ground - 26, Math.round(y))),
+    born: t,
+  };
+}
+
+export function majorColdDecor(
+  l: Layout,
+  night: boolean,
+  t: number,
+  state: {
+    swept: boolean;
+    sweepBorn: number | null;
+    hawthorns: HawthornCount;
+    pluckGlintUntil: number;
+    gust: ColdGust | null;
+  },
+  still = false,
+): Pixel[] {
+  const out: Pixel[] = [];
+  const put = (dots: readonly Pixel[], ox: number, oy: number) => {
+    for (const [x, y, k] of dots) out.push([x + ox, y + oy, k]);
+  };
+  const G = l.ground;
+  const peak = l.house.x + PEAK;
+
+  // Fence rail frost (swept clean once 扫尘 is triggered).
+  if (l.fence && !state.swept && night) {
+    for (let x = l.fence.x; x < l.fence.x + l.fence.w; x += 6) {
+      out.push([x, G - 9, "frostCrust"], [x + 1, G - 9, "frostCrust"], [x + 2, G - 9, "frostCrust"]);
+    }
+  }
+
+  // Crimson 窗花 paper-cuts centered inside the attic & side windows.
+  const cy = G - WALL - 11 + 5;
+  out.push(
+    [peak, cy - 1, "hawthorn"],
+    [peak, cy, "hawthorn"],
+    [peak, cy + 1, "hawthorn"],
+    [peak - 1, cy, "hawthorn"],
+    [peak + 1, cy, "hawthorn"],
+    [peak - 11, G - 11, "hawthorn"],
+    [peak - 11, G - 9, "hawthorn"],
+    [peak + 11, G - 11, "hawthorn"],
+    [peak + 11, G - 9, "hawthorn"],
+  );
+  if (night && state.swept) {
+    for (let dx = -4; dx <= 4; dx++) out.push([peak + dx, G - 1, "steamerGold"]);
+  }
+
+  // Dusting bamboo broom (tilts 1 cell right briefly during sweep).
+  const broom = broomBox(l);
+  const sweepAge = state.sweepBorn !== null ? t - state.sweepBorn : Infinity;
+  const tilt = !still && sweepAge >= 0 && sweepAge < 0.24 ? 1 : 0;
+  put(BAMBOO_BROOM, broom.x + tilt, broom.y);
+  if (!still && sweepAge >= 0 && sweepAge < SWEEP_DUST_FOR) {
+    const p = sweepAge / SWEEP_DUST_FOR;
+    for (let i = 0; i < 6; i++) {
+      const mx = broom.x + 8 + Math.round(p * 16 + i * 3);
+      const my = broom.y + 4 - Math.round(Math.sin(p * Math.PI) * 5 + (i % 3));
+      out.push([mx, my, i % 2 === 0 ? "frostCrust" : "snow"]);
+    }
+  }
+
+  // 冰糖葫芦 straw post (1..3 skewers + 280 ms sugar-glint on pluck).
+  const post = hawthornPostBox(l);
+  put(HAWTHORN_POST_BASE, post.x, post.y);
+  for (let i = 0; i < state.hawthorns; i++) put(HAWTHORN_STICKS[i], post.x, post.y);
+  if (!still && t < state.pluckGlintUntil) {
+    out.push([post.x + 8, post.y + 1, "glint"], [post.x + 7, post.y + 2, "glint"], [post.x + 9, post.y + 2, "glint"], [post.x + 8, post.y + 2, "steamerGold"]);
+  }
+
+  // Two-tier 消寒糕 bamboo steamer + 4 fps steam (doubled when swept/warmed).
+  const steamer = steamerBox(l);
+  put(STEAMER_BASE, steamer.x, steamer.y);
+  if (still) {
+    out.push([steamer.x + 3, steamer.y + 1, "snow"], [steamer.x + 7, steamer.y + 2, "zz"]);
+  } else {
+    put(STEAMER_STEAM[Math.floor(t * 4) % STEAMER_STEAM.length], steamer.x, steamer.y);
+    if (state.swept) {
+      out.push(
+        [steamer.x + 2, steamer.y, "zz"],
+        [steamer.x + 6, steamer.y, "snow"],
+        [steamer.x + 8, steamer.y + 1, "snow"],
+      );
+    }
+  }
+
+  // Year-end north-wind frost gust on sky click.
+  if (state.gust) {
+    const age = still ? 0.3 : t - state.gust.born;
+    if (age >= 0 && age < COLD_GUST_FOR) {
+      const shift = still ? 0 : Math.round((age / COLD_GUST_FOR) * 26);
+      const gx = state.gust.x - shift;
+      const gy = state.gust.y;
+      for (let i = 0; i < 6; i++) out.push([gx + i, gy, "frostCrust"]);
+      for (let i = 0; i < 5; i++) out.push([gx + 6 + i, gy - 1, "frostCrust"]);
+      for (let i = 0; i < 4; i++) out.push([gx + 12 + i, gy - 2, "frostCrust"]);
+      for (let i = 0; i < 5; i++) out.push([gx - 4 + i, gy + 5, "frostCrust"]);
+      for (let i = 0; i < 6; i++) out.push([gx + 8 + i, gy + 3, "frostCrust"]);
+      out.push([gx + 9, gy - 2, "snow"], [gx + 17, gy + 1, "snow"]);
+    }
+  }
 
   return out;
 }

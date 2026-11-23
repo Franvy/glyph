@@ -18,6 +18,15 @@ test("winter solar terms can be previewed and cycled via the banner switch", asy
   await expect(page.locator("canvas[data-weather=winter-solstice]")).toBeVisible();
 
   await page.getByRole("button", { name: /^Banner theme: Winter Solstice/ }).click();
+  await expect(page.locator("canvas[data-weather=new-year]")).toBeVisible();
+
+  await page.getByRole("button", { name: /^Banner theme: New Year's Day/ }).click();
+  await expect(page.locator("canvas[data-weather=minor-cold]")).toBeVisible();
+
+  await page.getByRole("button", { name: /^Banner theme: Minor Cold/ }).click();
+  await expect(page.locator("canvas[data-weather=major-cold]")).toBeVisible();
+
+  await page.getByRole("button", { name: /^Banner theme: Major Cold/ }).click();
   await expect(page.locator("canvas[data-weather=clear]")).toBeVisible();
 });
 
@@ -74,4 +83,67 @@ test("Winter Solstice keyboard controls stoke the hearth and bloom wintersweet",
   await bloom.focus();
   await bloom.press("Space");
   await expect(canvas).toHaveAttribute("data-wintersweet-blooms", "6");
+});
+
+
+test("New Year's Day keyboard controls turn the calendar page and light a sparkler", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?festival=new-year");
+  const canvas = page.locator("canvas[data-weather=new-year]");
+  await expect(canvas).toHaveAttribute("data-state", "still");
+  await expect(canvas).toHaveAttribute("data-calendar-page", "01");
+
+  const turn = page.getByRole("button", { name: "Turn calendar page" });
+  await turn.focus();
+  await turn.press("Enter");
+  await expect(canvas).toHaveAttribute("data-calendar-page", "31");
+  await expect(turn).toHaveAttribute("aria-pressed", "false");
+  await turn.press("Enter");
+  await expect(canvas).toHaveAttribute("data-calendar-page", "01");
+
+  const sparkler = page.getByRole("button", { name: "Light a sparkler" });
+  await sparkler.focus();
+  await sparkler.press("Space");
+  await expect(canvas).toHaveAttribute("data-sparklers", "1");
+});
+
+test("Minor Cold keyboard controls glide on ice and build the magpie nest", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?festival=minor-cold");
+  const canvas = page.locator("canvas[data-weather=minor-cold]");
+  await expect(canvas).toHaveAttribute("data-nest-stage", "2");
+
+  const glide = page.getByRole("button", { name: "Glide on ice" });
+  await glide.focus();
+  await glide.press("Enter");
+  await expect(canvas).toHaveAttribute("data-ice-glide", "true");
+
+  const nest = page.getByRole("button", { name: "Build magpie nest" });
+  await nest.focus();
+  await nest.press("Space");
+  await expect(canvas).toHaveAttribute("data-nest-stage", "3");
+  await nest.press("Space");
+  await expect(canvas).toHaveAttribute("data-nest-stage", "3");
+});
+
+test("Major Cold keyboard controls sweep winter frost and pluck candied hawthorn", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?festival=major-cold");
+  const canvas = page.locator("canvas[data-weather=major-cold]");
+  await expect(canvas).toHaveAttribute("data-hawthorns", "3");
+
+  const sweep = page.getByRole("button", { name: "Sweep winter frost" });
+  await sweep.focus();
+  await sweep.press("Enter");
+  await expect(canvas).toHaveAttribute("data-frost-swept", "true");
+  await expect(sweep).toHaveAttribute("aria-pressed", "true");
+
+  const hawthorn = page.getByRole("button", { name: "Pluck candied hawthorn" });
+  await hawthorn.focus();
+  await hawthorn.press("Space");
+  await expect(canvas).toHaveAttribute("data-hawthorns", "2");
+  await hawthorn.press("Space");
+  await expect(canvas).toHaveAttribute("data-hawthorns", "1");
+  await hawthorn.press("Space");
+  await expect(canvas).toHaveAttribute("data-hawthorns", "3");
 });

@@ -1,42 +1,81 @@
 import { useEffect, useRef } from "react";
 import { CANDY, decorations, ghostFrame, HAT_TOP, pumpkinBoxes, summonGhost, WITCH_HAT, type Ghost } from "@/lib/garden/halloween";
 import {
+  calendarBox,
+  launchSparkler,
+  newYearDecor,
+  PAGE_TEAR_FOR,
+  PARTY_HAT,
+  PARTY_HAT_TOP,
+  SPARKLER_FOR,
+  STARBURST_CHARM,
+  type Sparkler,
+} from "@/lib/garden/new-year";
+import {
   bambooRackBox,
   brazierBox,
   BREATH_PUFF,
+  broomBox,
   CAP_TOP,
+  CAPELET_ROW,
+  COLD_GUST_FOR,
+  type ColdGust,
+  DIAMOND_STAR_FOR,
+  type DiamondStar,
   EARMUFF_TOP,
   eavesBox,
+  type FallingFeather,
   type FallingPersimmon,
   type FallingPetal,
+  FLEECE_CAPELET,
   FLURRY_FOR,
+  HAWTHORN_SKEWER_TOKEN,
+  type HawthornCount,
+  hawthornPostBox,
+  ICE_GLIDE_FOR,
+  ICE_STREAK_FOR,
+  iceMirrorBox,
   ICICLE_GLINT_FOR,
   isWinterTerm,
   KNIT_CAP,
+  launchColdGust,
+  launchDiamondStar,
   launchMeteor,
+  magpieNestBox,
+  majorColdDecor,
   majorSnowDecor,
   majorSnowFlakes,
   MAX_SNOW_PRINTS,
   METEOR_FOR,
+  minorColdDecor,
   minorSnowDecor,
   minorSnowGraupel,
+  narcissusBox,
+  type NestStage,
+  nextNestStage,
   nextSnowCatStage,
   openWintersweet,
   PERSIMMON_CAKE_TOKEN,
   persimmonBoughBox,
   PLAID_SCARF,
   PLAID_SCARF_ROW,
+  pluckHawthorn,
   PLUSH_EARMUFFS,
   potatoPotBox,
+  QUILTED_VEST,
+  ROASTED_CHESTNUT_TOKEN,
   shakePersimmon,
   SNOW_PRINT_FOR,
   snowCatBox,
   type SnowCatStage,
   type SnowPrint,
   type SolsticeMeteor,
+  steamerBox,
+  SWEEP_DUST_FOR,
   SWEET_POTATO_TOKEN,
   TANGYUAN_SPOON_TOKEN,
   tangyuanBowlBox,
+  VEST_ROW,
   winterSolsticeDecor,
   wintersweetBox,
 } from "@/lib/garden/winter-terms";
@@ -208,6 +247,22 @@ interface Garden {
   petals: FallingPetal[];
   nextBreathAt: number;
   breathUntil: number;
+  // New Year's Day
+  calendarTurned: boolean;
+  tearBorn: number | null;
+  sparklers: Sparkler[];
+  // Minor Cold
+  nestStage: NestStage;
+  iceStreakBorn: number | null;
+  iceGlideUntil: number;
+  diamondStar: DiamondStar | null;
+  feathers: FallingFeather[];
+  // Major Cold
+  frostSwept: boolean;
+  sweepBorn: number | null;
+  hawthorns: HawthornCount;
+  pluckGlintUntil: number;
+  coldGust: ColdGust | null;
 }
 
 const nightOf = (theme: Theme) => theme === "dark";
@@ -227,6 +282,13 @@ function hits(g: Garden, night = false) {
       potatoPot: false,
       wintersweet: false,
       tangyuanBowl: false,
+      calendar: false,
+      magpieNest: false,
+      iceMirror: false,
+      narcissus: false,
+      hawthornPost: false,
+      broom: false,
+      steamer: false,
       house: false,
       grass: false,
       sky: false,
@@ -249,7 +311,30 @@ function hits(g: Garden, night = false) {
   const onPotatoPot = g.scene === "major-snow" && !onCat && !onSnowCat && !onEaves && inBox(potatoPotBox(l));
   const onWintersweet = g.scene === "winter-solstice" && !onCat && inBox(wintersweetBox(l));
   const onTangyuanBowl = g.scene === "winter-solstice" && !onCat && !onWintersweet && inBox(tangyuanBowlBox(l));
-  const blocked = onCat || onPumpkin || onBough || onBrazier || onSnowCat || onEaves || onPotatoPot || onWintersweet || onTangyuanBowl;
+  const onCalendar = g.scene === "new-year" && !onCat && inBox(calendarBox(l));
+  const onMagpieNest = g.scene === "minor-cold" && !onCat && inBox(magpieNestBox(l));
+  const onIceMirror = g.scene === "minor-cold" && !onCat && !onMagpieNest && inBox(iceMirrorBox(l));
+  const onNarcissus = g.scene === "minor-cold" && !onCat && !onMagpieNest && !onIceMirror && inBox(narcissusBox(l));
+  const onHawthornPost = g.scene === "major-cold" && !onCat && inBox(hawthornPostBox(l));
+  const onBroom = g.scene === "major-cold" && !onCat && !onHawthornPost && inBox(broomBox(l));
+  const onSteamer = g.scene === "major-cold" && !onCat && !onHawthornPost && !onBroom && inBox(steamerBox(l));
+  const blocked =
+    onCat ||
+    onPumpkin ||
+    onBough ||
+    onBrazier ||
+    onSnowCat ||
+    onEaves ||
+    onPotatoPot ||
+    onWintersweet ||
+    onTangyuanBowl ||
+    onCalendar ||
+    onMagpieNest ||
+    onIceMirror ||
+    onNarcissus ||
+    onHawthornPost ||
+    onBroom ||
+    onSteamer;
   const onHouse = !blocked && inside(l.house.x, l.house.top, l.house.w, l.ground - l.house.top);
   const box = g.scene === "spring" && g.popped < CRACKERS ? crackerBox(l) : null;
   const onCrackers = !!box && inside(box.x, box.y, box.w, box.h);
@@ -264,6 +349,13 @@ function hits(g: Garden, night = false) {
     potatoPot: onPotatoPot,
     wintersweet: onWintersweet,
     tangyuanBowl: onTangyuanBowl,
+    calendar: onCalendar,
+    magpieNest: onMagpieNest,
+    iceMirror: onIceMirror,
+    narcissus: onNarcissus,
+    hawthornPost: onHawthornPost,
+    broom: onBroom,
+    steamer: onSteamer,
     house: onHouse,
     grass: !blocked && !onHouse && !onRack && p.y >= l.ground - 8,
     sky: !blocked && !onHouse && p.y < l.ground - 18,
@@ -319,6 +411,15 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
     } else if (scene === "winter-solstice") {
       windowOn = night || lit || g.hearthStoked;
       warm = g.hearthStoked ? "cream" : "amber";
+    } else if (scene === "new-year") {
+      windowOn = night || lit || g.calendarTurned;
+      warm = g.calendarTurned ? "cream" : "amber";
+    } else if (scene === "minor-cold") {
+      windowOn = night || lit;
+      warm = "amber";
+    } else if (scene === "major-cold") {
+      windowOn = night || lit || g.frostSwept;
+      warm = g.frostSwept ? "cream" : "amber";
     }
     for (const [x, y, key] of windows(l, windowOn, warm)) put(x, y, key);
     if (scene === "storm") {
@@ -366,6 +467,51 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
         l,
         time,
         { stoked: g.hearthStoked, blooms: g.wintersweetBlooms, meteor: g.meteor, petals: g.petals },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
+  if (scene === "new-year") {
+    sprite(
+      newYearDecor(
+        l,
+        night,
+        time,
+        { turned: g.calendarTurned, tearBorn: g.tearBorn, sparklers: g.sparklers },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
+  if (scene === "minor-cold") {
+    sprite(
+      minorColdDecor(
+        l,
+        night,
+        time,
+        { nestStage: g.nestStage, streakBorn: g.iceStreakBorn, star: g.diamondStar, feathers: g.feathers },
+        still,
+      ),
+      0,
+      0,
+      false,
+      0,
+    );
+  }
+  if (scene === "major-cold") {
+    sprite(
+      majorColdDecor(
+        l,
+        night,
+        time,
+        { swept: g.frostSwept, sweepBorn: g.sweepBorn, hawthorns: g.hawthorns, pluckGlintUntil: g.pluckGlintUntil, gust: g.coldGust },
         still,
       ),
       0,
@@ -482,6 +628,19 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
         sprite(BREATH_PUFF, bx, oy + 6, cat.dir === 1, 4);
       }
     }
+    if (scene === "new-year") {
+      sprite(PARTY_HAT, Math.round(cat.x) + 2, oy + PARTY_HAT_TOP[pose], cat.dir === 1, 10);
+    }
+    if (scene === "minor-cold") {
+      sprite(FLEECE_CAPELET, Math.round(cat.x), oy + CAPELET_ROW[pose], cat.dir === 1, 14);
+      if (night && !still && time < g.breathUntil && cat.mode !== "sleep") {
+        const bx = cat.dir === 1 ? Math.round(cat.x) + 14 : Math.round(cat.x) - 4;
+        sprite(BREATH_PUFF, bx, oy + 6, cat.dir === 1, 4);
+      }
+    }
+    if (scene === "major-cold") {
+      sprite(QUILTED_VEST, Math.round(cat.x) + 1, oy + VEST_ROW[pose], cat.dir === 1, 12);
+    }
     if (cat.mode === "sleep") {
       const rise = (time * 2) % 6;
       sprite(ZED_BIG, cat.x + 13, oy - 2 - Math.floor(rise / 2), false, 3);
@@ -495,12 +654,15 @@ function draw(ctx: CanvasRenderingContext2D, g: Garden, theme: Theme, pose: Pose
       ctx.globalAlpha = 1;
       continue;
     }
-    if (isWinterTerm(scene)) {
+    if (isWinterTerm(scene) || scene === "new-year") {
       ctx.globalAlpha = still ? 1 : Math.min(1, (0.9 - h.age) / 0.25);
       const liftY = still ? 0 : Math.floor((h.age / 0.9) * 5);
       if (scene === "minor-snow") sprite(PERSIMMON_CAKE_TOKEN, h.x - 1, h.y - liftY, false, 8);
       else if (scene === "major-snow") sprite(SWEET_POTATO_TOKEN, h.x - 2, h.y - liftY, false, 9);
-      else sprite(TANGYUAN_SPOON_TOKEN, h.x - 2, h.y - liftY, false, 9);
+      else if (scene === "winter-solstice") sprite(TANGYUAN_SPOON_TOKEN, h.x - 2, h.y - liftY, false, 9);
+      else if (scene === "new-year") sprite(STARBURST_CHARM, h.x - 2, h.y - liftY, false, 9);
+      else if (scene === "minor-cold") sprite(ROASTED_CHESTNUT_TOKEN, h.x - 2, h.y - liftY, false, 9);
+      else sprite(HAWTHORN_SKEWER_TOKEN, h.x - 2, h.y - liftY, false, 9);
       ctx.globalAlpha = 1;
       continue;
     }
@@ -677,6 +839,22 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         petals: [],
         nextBreathAt: (g?.time ?? 0) + 5,
         breathUntil: 0,
+        // New Year's Day (transient sparklers & torn page clear on scene change)
+        calendarTurned: sameScene?.calendarTurned ?? (!night || still),
+        tearBorn: null,
+        sparklers: [],
+        // Minor Cold (transient streaks, diamond star & feathers clear on scene change)
+        nestStage: sameScene?.nestStage ?? (still ? 2 : 1),
+        iceStreakBorn: null,
+        iceGlideUntil: 0,
+        diamondStar: null,
+        feathers: [],
+        // Major Cold (transient dust motes, wind gust & glints clear on scene change)
+        frostSwept: sameScene?.frostSwept ?? false,
+        sweepBorn: null,
+        hawthorns: sameScene?.hawthorns ?? 3,
+        pluckGlintUntil: 0,
+        coldGust: null,
       };
       g.cat = { ...g.cat, x: Math.min(g.cat.x, l.spots.maxX) };
       gardenRef.current = g;
@@ -695,6 +873,8 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       pumpkin: wrap.querySelector<HTMLElement>('[data-garden-action="pumpkin"]'),
       brazier: wrap.querySelector<HTMLElement>('[data-garden-action="brazier"]'),
       hearth: wrap.querySelector<HTMLElement>('[data-garden-action="hearth"]'),
+      calendar: wrap.querySelector<HTMLElement>('[data-garden-action="calendar"]'),
+      sweep: wrap.querySelector<HTMLElement>('[data-garden-action="sweep"]'),
     };
     const setPressed = (btn: HTMLElement | null, pressed: boolean) => {
       if (!btn) return;
@@ -733,6 +913,14 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       setData("hearthStoked", String(g.hearthStoked));
       setData("wintersweetBlooms", String(g.wintersweetBlooms));
       setPressed(pressedButtons.hearth, g.hearthStoked);
+      setData("calendarPage", g.calendarTurned ? "01" : "31");
+      setData("sparklers", String(g.sparklers.length));
+      setPressed(pressedButtons.calendar, g.calendarTurned);
+      setData("nestStage", String(g.nestStage));
+      setData("iceGlide", String(g.iceStreakBorn !== null && (still || g.time - g.iceStreakBorn < ICE_STREAK_FOR)));
+      setData("frostSwept", String(g.frostSwept));
+      setData("hawthorns", String(g.hawthorns));
+      setPressed(pressedButtons.sweep, g.frostSwept);
       setData("catX", String(Math.round((g.cat.x + 8) * CELL)));
       setData("catY", String(Math.round((g.l.ground - 6) * CELL)));
       if (g.activity) {
@@ -860,6 +1048,23 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
           g.nextBreathAt = g.time + 5 + Math.random() * 2;
         }
       }
+      if (scene === "new-year") {
+        g.sparklers = g.sparklers.filter((s) => g!.time - s.born < SPARKLER_FOR);
+        if (g.tearBorn !== null && g.time - g.tearBorn >= PAGE_TEAR_FOR) g.tearBorn = null;
+      }
+      if (scene === "minor-cold") {
+        if (g.iceStreakBorn !== null && g.time - g.iceStreakBorn >= ICE_STREAK_FOR) g.iceStreakBorn = null;
+        if (g.diamondStar && g.time - g.diamondStar.born >= DIAMOND_STAR_FOR) g.diamondStar = null;
+        g.feathers = g.feathers.filter((f) => f.y + (g!.time - f.born) * 5 < l.ground);
+        if (night && g.time >= g.nextBreathAt) {
+          g.breathUntil = g.time + 0.6;
+          g.nextBreathAt = g.time + 5 + Math.random() * 2;
+        }
+      }
+      if (scene === "major-cold") {
+        if (g.sweepBorn !== null && g.time - g.sweepBorn >= SWEEP_DUST_FOR) g.sweepBorn = null;
+        if (g.coldGust && g.time - g.coldGust.born >= COLD_GUST_FOR) g.coldGust = null;
+      }
 
       if (scene === "spring") {
         // 鞭炮: one cracker every 2 frames, from the bottom up. 煤球 runs to the house side.
@@ -901,7 +1106,7 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       }
       g.hearts = g.hearts
         .map((h) => ({ ...h, age: h.age + dt }))
-        .filter((h) => h.age < (scene === "halloween" ? 0.8 : isWinterTerm(scene) ? 0.9 : 1.2));
+        .filter((h) => h.age < (scene === "halloween" ? 0.8 : isWinterTerm(scene) || scene === "new-year" ? 0.9 : 1.2));
       for (const f of l.flowers) {
         const near = Math.abs(g.cat.x + 8 - f.x) < 4 && g.cat.mode !== "sit";
         const left = Math.max(0, (g.sway.get(f.x) ?? 0) - dt);
@@ -912,16 +1117,16 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
     const pet = () => {
       if (!g) return;
       const now = performance.now() / 1000;
-      if ((scene === "halloween" || isWinterTerm(scene)) && now - g.lastTreat < 1) return;
+      if ((scene === "halloween" || isWinterTerm(scene) || scene === "new-year") && now - g.lastTreat < 1) return;
       g.lastTreat = now;
       g.pets++;
-      const dur = scene === "halloween" ? 0.8 : scene === "spring" || isWinterTerm(scene) ? 0.9 : 0.6;
+      const dur = scene === "halloween" ? 0.8 : scene === "spring" || isWinterTerm(scene) || scene === "new-year" ? 0.9 : 0.6;
       g.petUntil = g.time + dur;
       g.blinkUntil = 0;
       g.cat = { ...g.cat, mode: "happy", timer: dur };
       g.hearts = [
         ...g.hearts,
-        { x: g.cat.x + 6, y: g.l.ground - (scene === "halloween" ? 31 : isWinterTerm(scene) ? 24 : 18), age: 0 },
+        { x: g.cat.x + 6, y: g.l.ground - (scene === "halloween" ? 31 : isWinterTerm(scene) || scene === "new-year" ? 24 : 18), age: 0 },
       ].slice(-12);
       petSound(petCue(scene), panAt(g.cat.x + 8, g.l.w));
     };
@@ -1081,6 +1286,94 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
       skySound("firefly", panAt(x, g.l.w));
     };
+    const turnCalendar = () => {
+      if (!g) return;
+      g.calendarTurned = !g.calendarTurned;
+      const cal = calendarBox(g.l);
+      if (!still && g.calendarTurned) {
+        g.tearBorn = g.time;
+        const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, cal.x - 16));
+        g.cat = { ...g.cat, mode: "walk", goal: "cushion", target, dir: target >= g.cat.x ? 1 : -1 };
+      } else if (!g.calendarTurned) {
+        g.tearBorn = null;
+      }
+      lampSound(panAt(cal.x, g.l.w));
+    };
+    const lightSparkler = (x?: number, y?: number) => {
+      if (!g) return;
+      const tx = Math.round(x ?? g.l.w * 0.56);
+      const ty = Math.round(y ?? Math.max(10, g.l.ground - 52));
+      if (still) {
+        g.sparklers = g.sparklers.length > 0 ? [] : [{ x: tx, y: ty, born: g.time - 0.25 }];
+        g.petUntil = 0;
+        g.cat = { ...g.cat, mode: "alert", dir: tx > g.cat.x + 8 ? 1 : -1 };
+      } else {
+        const next = launchSparkler(g.sparklers, g.l, tx, ty, g.time);
+        if (next.length === g.sparklers.length) return;
+        g.sparklers = next;
+        g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: tx > g.cat.x + 8 ? 1 : -1 };
+      }
+      skySound("firefly", panAt(tx, g.l.w));
+    };
+    const glideIce = () => {
+      if (!g) return;
+      const ice = iceMirrorBox(g.l);
+      g.iceStreakBorn = still ? (g.iceStreakBorn === null ? 0 : null) : g.time;
+      if (!still) {
+        g.iceGlideUntil = g.time + ICE_GLIDE_FOR;
+        g.petUntil = g.time + ICE_GLIDE_FOR;
+        if (night) g.breathUntil = g.time + 0.6;
+        const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, ice.x + ice.w - 10));
+        g.cat = { ...g.cat, mode: "walk", goal: "cushion", target, dir: target >= g.cat.x ? 1 : -1 };
+      }
+      yarnSound(panAt(ice.x + ice.w / 2, g.l.w));
+    };
+    const buildNest = () => {
+      if (!g) return;
+      g.nestStage = nextNestStage(g.nestStage);
+      const nest = magpieNestBox(g.l);
+      if (!still) {
+        g.feathers = [...g.feathers, { x: nest.x + 6, y: nest.y + 8, born: g.time }].slice(-6);
+      }
+      popSound(panAt(nest.x, g.l.w));
+    };
+    const glintDiamond = (x: number, y: number) => {
+      if (!g) return;
+      const next = launchDiamondStar(g.diamondStar, g.l, x, y, g.time);
+      if (next === g.diamondStar && !still) return;
+      g.diamondStar = still ? (g.diamondStar ? null : next) : next;
+      if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+      skySound("firefly", panAt(x, g.l.w));
+    };
+    const sweepFrost = () => {
+      if (!g) return;
+      g.frostSwept = !g.frostSwept;
+      const broom = broomBox(g.l);
+      if (!still && g.frostSwept) {
+        g.sweepBorn = g.time;
+        const target = Math.max(g.l.spots.minX, Math.min(g.l.spots.maxX, steamerBox(g.l).x - 16));
+        g.cat = { ...g.cat, mode: "walk", goal: "cushion", target, dir: target >= g.cat.x ? 1 : -1 };
+      }
+      lampSound(panAt(broom.x, g.l.w));
+    };
+    const pluckSkewer = () => {
+      if (!g) return;
+      g.hawthorns = pluckHawthorn(g.hawthorns);
+      const post = hawthornPostBox(g.l);
+      if (!still) {
+        g.pluckGlintUntil = g.time + 0.28;
+        g.cat = { ...g.cat, mode: "alert", timer: 0.9, goal: "wander", target: g.cat.x, dir: post.x > g.cat.x + 8 ? 1 : -1 };
+      }
+      popSound(panAt(post.x, g.l.w));
+    };
+    const sendGust = (x: number, y: number) => {
+      if (!g) return;
+      const next = launchColdGust(g.coldGust, g.l, x, y, g.time);
+      if (next === g.coldGust && !still) return;
+      g.coldGust = still ? (g.coldGust ? null : next) : next;
+      if (!still) g.cat = { ...g.cat, mode: "alert", timer: 1, goal: "wander", target: g.cat.x, dir: x > g.cat.x + 8 ? 1 : -1 };
+      skySound("firefly", panAt(x, g.l.w));
+    };
 
     build();
     const resize = new ResizeObserver(() => {
@@ -1108,10 +1401,20 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         hit.eaves ||
         hit.wintersweet ||
         hit.tangyuanBowl ||
+        hit.calendar ||
+        hit.magpieNest ||
+        hit.iceMirror ||
+        hit.hawthornPost ||
+        hit.broom ||
+        hit.steamer ||
         hit.house ||
         hit.grass ||
         hit.crackers ||
-        (hit.sky && (scene === "halloween" || scene === "major-snow" || (scene === "winter-solstice" && night)));
+        (hit.sky &&
+          (scene === "halloween" ||
+            scene === "major-snow" ||
+            scene === "new-year" ||
+            ((scene === "winter-solstice" || scene === "minor-cold" || scene === "major-cold") && night)));
       canvas.style.cursor = interactive ? "pointer" : "default";
       if (still) render();
     };
@@ -1153,6 +1456,24 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
         if (hit.wintersweet) { bloomWintersweet(); render(); return; }
         if (hit.house || hit.tangyuanBowl) { stokeHearth(); render(); return; }
         if (hit.sky && night) { sendMeteor(g.pointer.x, g.pointer.y); render(); return; }
+      }
+      if (scene === "new-year") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.calendar || hit.house) { turnCalendar(); render(); return; }
+        if (hit.sky) { lightSparkler(g.pointer.x, g.pointer.y); render(); return; }
+      }
+      if (scene === "minor-cold") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.magpieNest) { buildNest(); render(); return; }
+        if (hit.iceMirror) { glideIce(); render(); return; }
+        if (hit.narcissus) { render(); return; }
+        if (hit.sky && night) { glintDiamond(g.pointer.x, g.pointer.y); render(); return; }
+      }
+      if (scene === "major-cold") {
+        if (hit.cat) { pet(); g.overCat = true; render(); return; }
+        if (hit.hawthornPost) { pluckSkewer(); render(); return; }
+        if (hit.broom || hit.steamer || hit.house) { sweepFrost(); render(); return; }
+        if (hit.sky && night) { sendGust(g.pointer.x, g.pointer.y); render(); return; }
       }
       if (scene === "spring") {
         if (hit.cat) { pet(); g.overCat = true; render(); return; }
@@ -1197,6 +1518,12 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
       if (action === "icicles") chimeIcicles();
       if (action === "hearth") stokeHearth();
       if (action === "wintersweet") bloomWintersweet();
+      if (action === "calendar") turnCalendar();
+      if (action === "sparkler") lightSparkler();
+      if (action === "ice-glide") glideIce();
+      if (action === "magpie-nest") buildNest();
+      if (action === "sweep") sweepFrost();
+      if (action === "hawthorn") pluckSkewer();
       render();
     };
     const controls = wrap.querySelectorAll<HTMLButtonElement>("[data-garden-action]");
@@ -1300,6 +1627,33 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
           ))}
         </div>
       )}
+      {scene === "new-year" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["calendar", "Turn calendar page"], ["sparkler", "Light a sparkler"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "calendar" ? !nightOf(theme) || still : undefined}>{label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "minor-cold" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["ice-glide", "Glide on ice"], ["magpie-nest", "Build magpie nest"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              >{label}</button>
+          ))}
+        </div>
+      )}
+      {scene === "major-cold" && (
+        <div className="absolute top-2 left-2 flex gap-2">
+          {([ ["pet", "Pet Meiqiu"], ["sweep", "Sweep winter frost"], ["hawthorn", "Pluck candied hawthorn"] ] as const).map(([action, label]) => (
+            <button key={action} type="button" data-garden-action={action}
+              className="sr-only focus:not-sr-only focus:relative focus:min-h-11 focus:bg-bg focus:px-3 focus:text-xs focus:text-body focus:outline-2 focus:outline-accent"
+              aria-pressed={action === "sweep" ? false : undefined}>{label}</button>
+          ))}
+        </div>
+      )}
       {scene === "spring" && (
         <div className="absolute top-2 left-2 flex gap-2">
           {([ ["pet", "Pet Meiqiu"], ["crackers", "Light firecrackers"], ["firework", "Launch firework"] ] as const).map(([action, label]) => (
@@ -1309,7 +1663,7 @@ export function GardenBanner({ theme, still, scene = "clear", windy = false }: {
           ))}
         </div>
       )}
-      {scene !== "halloween" && scene !== "spring" && !isWinterTerm(scene) && (
+      {scene !== "halloween" && scene !== "spring" && scene !== "new-year" && !isWinterTerm(scene) && (
         <div className="absolute top-2 left-2 flex gap-2">
           {(scene === "storm"
             ? ([ ["house", "Warm the house"], ["yarn", "Roll yarn"] ] as const)

@@ -20,6 +20,8 @@ describe("festivalDates", () => {
     expect(dates["2026-11-22"]).toBe("minor-snow");
     expect(dates["2026-12-07"]).toBe("major-snow");
     expect(dates["2026-12-22"]).toBe("winter-solstice");
+    expect(dates["2026-01-05"]).toBe("minor-cold");
+    expect(dates["2026-01-20"]).toBe("major-cold");
     expect(dates["2026-01-01"]).toBe("new-year");
     expect(dates["2026-05-01"]).toBe("labour-day");
     expect(dates["2026-10-01"]).toBe("national-day");
