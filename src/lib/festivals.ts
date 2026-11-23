@@ -5,7 +5,7 @@ type Rule =
   | { solar: [month: number, day: number] }
   /** The day before lunar new year: the last day of month 12, which has 29 or 30 days. */
   | { eve: true }
-  | { term: "qingming" | "minor-snow" | "major-snow" | "winter-solstice" };
+  | { term: "qingming" | "minor-snow" | "major-snow" | "winter-solstice" | "minor-cold" | "major-cold" };
 
 /**
  * The festivals that get a theme. Order is priority: when two fall on one day, the earlier one wins.
@@ -23,6 +23,8 @@ export const FESTIVALS = [
   { id: "minor-snow", name: "Minor Snow", rule: { term: "minor-snow" } },
   { id: "major-snow", name: "Major Snow", rule: { term: "major-snow" } },
   { id: "winter-solstice", name: "Winter Solstice", rule: { term: "winter-solstice" } },
+  { id: "minor-cold", name: "Minor Cold", rule: { term: "minor-cold" } },
+  { id: "major-cold", name: "Major Cold", rule: { term: "major-cold" } },
   { id: "laba", name: "Laba", rule: { lunar: [12, 8] } },
   { id: "new-year", name: "New Year's Day", rule: { solar: [1, 1] } },
   { id: "labour-day", name: "Labour Day", rule: { solar: [5, 1] } },
@@ -50,6 +52,10 @@ function datesFor(rule: Rule, year: number): string[] {
         return [Solar.fromYmd(year, 12, 15).getLunar().getPrevJie().getSolar().toYmd()];
       case "winter-solstice":
         return [Solar.fromYmd(year, 12, 31).getLunar().getPrevQi().getSolar().toYmd()];
+      case "minor-cold":
+        return [Solar.fromYmd(year, 1, 15).getLunar().getPrevJie().getSolar().toYmd()];
+      case "major-cold":
+        return [Solar.fromYmd(year, 1, 31).getLunar().getPrevQi().getSolar().toYmd()];
     }
   }
   // A lunar date of year N can land in solar year N or N + 1 (Laba does), so try both lunar years.

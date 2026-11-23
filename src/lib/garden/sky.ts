@@ -25,6 +25,9 @@ const BY_FESTIVAL: Record<string, SceneName> = {
   "minor-snow": "minor-snow",
   "major-snow": "major-snow",
   "winter-solstice": "winter-solstice",
+  "new-year": "new-year",
+  "minor-cold": "minor-cold",
+  "major-cold": "major-cold",
 };
 
 /**

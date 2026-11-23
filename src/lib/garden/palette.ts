@@ -21,7 +21,12 @@ export type Key =
   | "bamboo" | "bambooDark" | "amber" | "cream"
   | "ice" | "rime" | "berry" | "berryHi" | "potato" | "potatoSkin" | "glint"
   | "blush" | "wool" | "plumHeart" | "plumBud" | "brick" | "brickLit"
-  | "sunPatch" | "sunGold" | "sunEdge";
+  | "sunPatch" | "sunGold" | "sunEdge"
+  | "champagne" | "filament" | "champagneShade" | "mint" | "dawnCoral" | "dawnBand" | "dawnBandEdge"
+  | "cord" | "easel" | "pageFold" | "pageInk"
+  | "glacial" | "glacialEdge" | "celadon" | "celadonHi" | "celadonDark"
+  | "cape" | "capeDark" | "chestnut" | "chestnutDark" | "chestnutGold" | "magpie" | "twigDark"
+  | "frostCrust" | "hawthorn" | "hawthornDark" | "steamerGold" | "straw" | "strawDark" | "pole" | "cakeEdge";
 
 export type Palette = Record<Key, string>;
 
@@ -57,6 +62,14 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     blush: "#e89aa8", wool: "#c96a76", plumHeart: "#d97b88", plumBud: "#a88444",
     brick: "#5c4438", brickLit: "#7d5b4b",
     sunPatch: "#1c1c1b", sunGold: "#f2c478", sunEdge: "#e3a32a",
+    champagne: "#f6d98a", filament: "#fff6d6", champagneShade: "#b89346", mint: "#7fd1b9",
+    dawnCoral: "#f0947b", dawnBand: "#2a1f1d", dawnBandEdge: "#3d2824",
+    cord: "#57544e", easel: "#7a6856", pageFold: "#c9c4ba", pageInk: "#1a1a19",
+    glacial: "#b6e2f5", glacialEdge: "#4a8fef", celadon: "#6bb09b", celadonHi: "#9ad4c2", celadonDark: "#467d6d",
+    cape: "#48758a", capeDark: "#3b6073", chestnut: "#7a3e2e", chestnutDark: "#54281d",
+    chestnutGold: "#e6b555", magpie: "#2b2b30", twigDark: "#4a4844",
+    frostCrust: "#c7dcf7", hawthorn: "#d14949", hawthornDark: "#8f2c2c", steamerGold: "#e6b86a",
+    straw: "#c29b56", strawDark: "#9e7e56", pole: "#7a5842", cakeEdge: "#edeae3",
   },
   light: {
     ...UMBRELLA,
@@ -82,5 +95,13 @@ export const PALETTES: Record<"dark" | "light", Palette> = {
     blush: "#e89aa8", wool: "#c96a76", plumHeart: "#d97b88", plumBud: "#a88444",
     brick: "#5c4438", brickLit: "#7d5b4b",
     sunPatch: "#f5ead4", sunGold: "#f6d48a", sunEdge: "#e8b85a",
+    champagne: "#e6b245", filament: "#fff3d6", champagneShade: "#b89346", mint: "#4ba88d",
+    dawnCoral: "#e0785e", dawnBand: "#fce5d4", dawnBandEdge: "#f5c4b4",
+    cord: "#b9b5ad", easel: "#b9b5ad", pageFold: "#d4d1ca", pageInk: "#1a1a19",
+    glacial: "#d6e8ff", glacialEdge: "#88bfe6", celadon: "#559985", celadonHi: "#8cc4b2", celadonDark: "#3d7263",
+    cape: "#48758a", capeDark: "#3b6073", chestnut: "#7a3e2e", chestnutDark: "#54281d",
+    chestnutGold: "#e3a32a", magpie: "#2b2b30", twigDark: "#6e6b65",
+    frostCrust: "#c7dcf7", hawthorn: "#c83e3e", hawthornDark: "#8f2c2c", steamerGold: "#d9a858",
+    straw: "#b58d49", strawDark: "#8c6d3f", pole: "#7a5842", cakeEdge: "#eceae4",
   },
 };

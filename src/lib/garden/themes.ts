@@ -18,6 +18,9 @@ export const SCENES = [
   "minor-snow",
   "major-snow",
   "winter-solstice",
+  "new-year",
+  "minor-cold",
+  "major-cold",
 ] as const;
 export type SceneName = (typeof SCENES)[number];
 
@@ -33,6 +36,9 @@ export const SCENE_LABELS: Record<SceneName, string> = {
   "minor-snow": "Minor Snow",
   "major-snow": "Major Snow",
   "winter-solstice": "Winter Solstice",
+  "new-year": "New Year's Day",
+  "minor-cold": "Minor Cold",
+  "major-cold": "Major Cold",
 };
 
 export const nextScene = (s: SceneName): SceneName => SCENES[(SCENES.indexOf(s) + 1) % SCENES.length];

@@ -267,11 +267,78 @@ function paintSolstice(c: Canvas, l: Layout, night: boolean) {
   }
 }
 
-/** Sun altitude in daylight for the three winter solar terms (steps down from y = 11). */
+/** Minor Cold: glacial frost on eaves & fence, frozen lawn ice mirror, and daytime sun-patch. */
+function paintMinorCold(c: Canvas, l: Layout, night: boolean) {
+  const G = l.ground;
+  const peak = l.house.x + PEAK;
+  // Crisp glacial frost along the roof ridge & eave corners.
+  c.rect(peak - 4, G - WALL - ROOF.length, 9, 1, night ? "glacial" : "snow");
+  c.rect(l.house.x, G - WALL - 1, 5, 1, night ? "glacial" : "snow");
+  c.rect(l.house.x + l.house.w - 5, G - WALL - 1, 5, 1, night ? "glacial" : "snow");
+  if (night && l.fence) {
+    for (let x = l.fence.x; x < l.fence.x + l.fence.w - 14; x += 6) c.rect(x, G - 9, 3, 1, "glacial");
+  }
+  // Frozen lawn ice mirror (26 × 3 on wide screens, 14 × 3 below 180 cells).
+  const wide = l.fence !== null;
+  const mw = wide ? 26 : 14;
+  const mx = wide ? Math.max(2, l.bowl - 46) : Math.max(2, l.bowl - 22);
+  c.rect(mx, G - 2, mw, 2, "glacialEdge");
+  c.rect(mx + 2, G - 3, mw - 4, 1, "glacialEdge");
+  c.rect(mx + 2, G - 2, mw - 4, 2, "glacial");
+  c.rect(mx + 4, G - 3, mw - 8, 1, "glacial");
+  // Specular ice glints.
+  c.rect(mx + 5, G - 2, 3, 1, "glint");
+  c.rect(mx + 7, G - 3, 2, 1, "glint");
+  if (mw >= 20) {
+    c.rect(mx + 16, G - 2, 4, 1, "glint");
+    c.rect(mx + 19, G - 3, 2, 1, "glint");
+  }
+  if (!night) {
+    c.rect(Math.max(2, l.bowl - 22), G, 18, 1, "sunPatch");
+  }
+}
+
+/** Major Cold: thick year-end frost crust on roof gable and daytime sun-patch. */
+function paintMajorCold(c: Canvas, l: Layout, night: boolean) {
+  const G = l.ground;
+  const peak = l.house.x + PEAK;
+  const rtop = G - WALL - ROOF.length;
+  c.rect(peak - 5, rtop - 1, 11, 2, night ? "frostCrust" : "snow");
+  c.rect(peak - 4, rtop - 1, 9, 1, night ? "snow" : "frostCrust");
+  for (const [dx, dy, w] of [
+    [-9, 1, 4], [5, 1, 4], [-13, 3, 4], [9, 3, 4], [-16, 5, 3], [13, 5, 3], [-19, 8, 3], [16, 8, 3],
+  ] as const) {
+    c.rect(peak + dx, rtop + dy, w, 2, night ? "frostCrust" : "snow");
+  }
+  if (!night) {
+    c.rect(Math.max(2, l.bowl - 24), G, 20, 1, "sunPatch");
+  }
+}
+
+/** New Year's Day: subtle fallen confetti on the daylight lawn and morning sun-patch. */
+function paintNewYear(c: Canvas, l: Layout, night: boolean) {
+  const G = l.ground;
+  if (!night) {
+    c.rect(Math.max(2, l.bowl - 24), G, 20, 1, "sunPatch");
+    const spots: [number, Key][] = [
+      [l.bowl - 48, "mint"],
+      [l.bowl - 37, "dawnCoral"],
+      [l.bowl - 25, "mint"],
+      [l.bowl - 14, "dawnCoral"],
+      [l.bowl - 31, "champagne"],
+    ];
+    for (const [x, key] of spots) {
+      if (x >= 2 && x < l.house.x - 14) c.rect(x, G - 1, 2, 1, key);
+    }
+  }
+}
+
+/** Sun altitude in daylight across the winter arc (18 -> 21 -> 24 -> 22 New Year -> 21 -> 18). */
 export function sunAltitude(scene: SceneName): number {
-  if (scene === "minor-snow") return 18;
-  if (scene === "major-snow") return 21;
+  if (scene === "minor-snow" || scene === "major-cold") return 18;
+  if (scene === "major-snow" || scene === "minor-cold") return 21;
   if (scene === "winter-solstice") return 24;
+  if (scene === "new-year") return 22;
   return 11;
 }
 
@@ -299,15 +366,29 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
   }
 
   // By day a round sun; by night tonight's phase (Paper: banner · 月相).
-  // Winter solar terms lower the midday sun step by step (18 -> 21 -> 24).
+  // Winter solar terms & New Year step the midday sun across the seasonal arc (18 -> 21 -> 24 -> 22 -> 21 -> 18).
   if (moon) {
-    const winterTerm = scene === "minor-snow" || scene === "major-snow" || scene === "winter-solstice";
+    const seasonalSun =
+      scene === "minor-snow" ||
+      scene === "major-snow" ||
+      scene === "winter-solstice" ||
+      scene === "new-year" ||
+      scene === "minor-cold" ||
+      scene === "major-cold";
     const cy = night ? l.moon.y : sunAltitude(scene);
+    if (!night && scene === "new-year") {
+      // Stepped apricot dawn horizon band behind the first sunrise (旦).
+      c.rect(Math.max(0, l.moon.x - 24), cy + 6, 48, 2, "dawnBand");
+      c.rect(Math.max(0, l.moon.x - 16), cy + 4, 32, 2, "dawnBand");
+      c.rect(Math.max(0, l.moon.x - 12), cy + 7, 24, 1, "dawnBandEdge");
+    }
     const MOON_KEYS: Record<string, Key> = night
       ? { "#": "moon", "+": "moon2", ".": "moonDark" }
-      : winterTerm
-        ? { "#": "sunGold", "+": "sunEdge", ".": "sunGold" }
-        : { "#": "moon", "+": "moon", ".": "moon" };
+      : scene === "new-year"
+        ? { "#": "champagne", "+": "dawnCoral", ".": "filament" }
+        : seasonalSun
+          ? { "#": "sunGold", "+": "sunEdge", ".": "sunGold" }
+          : { "#": "moon", "+": "moon", ".": "moon" };
     const art = moonArt(night ? phase : "full");
     art.forEach((row, j) => [...row].forEach((ch, i) => {
       if (MOON_KEYS[ch]) c.set(l.moon.x - 5 + i, cy - 5 + j, MOON_KEYS[ch]);
@@ -401,8 +482,15 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
     c.rect(wx - 1, G - 6, 7, 1, "wood3"); // sill
   }
 
-  // Bowl with a few kibbles (winter solar terms place their own doorstep prop here).
-  if (scene !== "minor-snow" && scene !== "major-snow" && scene !== "winter-solstice") {
+  // Bowl with a few kibbles (winter solar terms & New Year place their own doorstep prop here).
+  if (
+    scene !== "minor-snow" &&
+    scene !== "major-snow" &&
+    scene !== "winter-solstice" &&
+    scene !== "new-year" &&
+    scene !== "minor-cold" &&
+    scene !== "major-cold"
+  ) {
     c.rect(l.bowl, G - 3, 8, 1, "wood3");
     c.rect(l.bowl + 1, G - 2, 6, 2, "wood2");
     for (const x of [2, 4, 5]) c.set(l.bowl + x, G - 4, "petalC");
@@ -429,6 +517,9 @@ export function paintStatic(l: Layout, night: boolean, scene: SceneName = "clear
   }
   if (scene === "major-snow") paintMajorSnow(c, l);
   if (scene === "winter-solstice") paintSolstice(c, l, night);
+  if (scene === "new-year") paintNewYear(c, l, night);
+  if (scene === "minor-cold") paintMinorCold(c, l, night);
+  if (scene === "major-cold") paintMajorCold(c, l, night);
   if (scene === "spring") {
     paintSpringDoor(c, peak, G);
     if (!night) paintScraps(c, l);
